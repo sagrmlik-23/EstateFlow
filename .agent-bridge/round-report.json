@@ -1,0 +1,16 @@
+{
+  "total_agents": 6,
+  "completed_agents": 2,
+  "in_progress_agents": 4,
+  "errors": [],
+  "warnings": [
+    "agent-5-whitelabel: INTEGRATION WARNING - ClientLayout uses 'use client' directive \u2014 it must be wrapped in a server component for Next.js App Router root layouts. Import ClientLayout from a client-component boundary.",
+    "agent-5-whitelabel: INTEGRATION WARNING - generateTenantMetadata is a server function that returns Next.js Metadata \u2014 use only in server components and layout.tsx generateMetadata exports, NOT in client components.",
+    "agent-5-whitelabel: INTEGRATION WARNING - getTenantConfig makes a public API call to /api/tenants/[slug]/branding \u2014 ensure this API route exists (to be built in Round 2 or by agent-2/agent-4). The route must return WhiteLabelConfig shape without auth requirement (branding is intentionally public for SEO/Twitter cards).",
+    "agent-5-whitelabel: INTEGRATION WARNING - CSS variables MUST be prefixed with --tenant- to avoid collisions with shadcn/ui radix theme variables (--primary, --background, etc.).",
+    "agent-5-whitelabel: INTEGRATION WARNING - Branding colors from agent-2-database are nullable \u2014 ClientLayout must handle null colors gracefully by defaulting to EstateFlow corporate brand (#1e40af blue).",
+    "agent-5-whitelabel: INTEGRATION WARNING - TenantLogo uses next/image \u2014 ensure logo_url domains are added to next.config.js remotePatterns.",
+    "agent-5-whitelabel: INTEGRATION WARNING - TenantFavicon dynamically swaps <link> tags \u2014 may cause a brief flash of default favicon before tenant favicon loads. Consider preload in <head> via generateTenantMetadata."
+  ],
+  "passed": true
+}

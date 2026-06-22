@@ -1,0 +1,28 @@
+{
+  "project": "EstateFlow CRM",
+  "phase": 5,
+  "phase_name": "AI Chatbot",
+  "previous_phase": "Phase 4 completed ✅",
+  "agents": {
+    "agent-5-1-chatbot-engine": {
+      "status": "pending",
+      "task": "Chatbot engine, NLU, multi-turn conversation, rich media"
+    },
+    "agent-5-2-website-widget": {
+      "status": "pending",
+      "task": "Website chatbot widget (embedded script, iframe, config)"
+    },
+    "agent-5-3-whatsapp-chatbot": {
+      "status": "completed",
+      "task": "WhatsApp chatbot integration + handoff to human"
+    },
+    "agent-5-4-chatbot-api": {
+      "status": "pending",
+      "task": "Chatbot API routes, message history, training data"
+    },
+    "agent-5-5-chatbot-ui": {
+      "status": "pending",
+      "task": "Chatbot management UI, conversation logs, training interface"
+    }
+  }
+}

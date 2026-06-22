@@ -1,0 +1,86 @@
+{
+  "name": "EstateFlow CRM",
+  "short_name": "EstateFlow",
+  "description": "White-Label Multi-Tenant SaaS CRM with AI Voice Agents — EstateFlow CRM",
+  "start_url": "/",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "background_color": "#ffffff",
+  "theme_color": "#1e40af",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "id": "/",
+  "lang": "en",
+  "dir": "ltr",
+  "prefer_related_applications": false,
+  "categories": ["business", "productivity", "real-estate"],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "View your CRM dashboard",
+      "url": "/dashboard",
+      "icons": [
+        { "src": "/images/icon-192.png", "sizes": "192x192" }
+      ]
+    },
+    {
+      "name": "Leads",
+      "short_name": "Leads",
+      "description": "Manage your leads",
+      "url": "/leads",
+      "icons": [
+        { "src": "/images/icon-192.png", "sizes": "192x192" }
+      ]
+    },
+    {
+      "name": "Properties",
+      "short_name": "Properties",
+      "description": "Manage your properties",
+      "url": "/properties",
+      "icons": [
+        { "src": "/images/icon-192.png", "sizes": "192x192" }
+      ]
+    },
+    {
+      "name": "AI Agents",
+      "short_name": "Agents",
+      "description": "Manage AI voice agents",
+      "url": "/ai/agents",
+      "icons": [
+        { "src": "/images/icon-192.png", "sizes": "192x192" }
+      ]
+    }
+  ],
+  "icons": [
+    {
+      "src": "/images/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/images/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/images/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/images/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ],
+  "screenshots": [],
+  "edge_side_panel": {},
+  "handle_links": "auto",
+  "launch_handler": {
+    "client_mode": ["navigate-existing", "auto"]
+  }
+}
