@@ -512,10 +512,25 @@ export class WhatsAppBot {
   // -----------------------------------------------------------------------
 
   static create(watiProvider?: WATIProvider): WhatsAppBot {
-    const provider = watiProvider ?? new WATIProvider({
-      apiKey: process.env.WATI_API_KEY ?? '',
-      whatsappNumber: process.env.WATI_WHATSAPP_NUMBER ?? '',
+    const apiKey = process.env.WATI_API_KEY || process.env.WHATSAPP_API_KEY;
+    const whatsappNumber = process.env.WATI_WHATSAPP_NUMBER || process.env.WHATSAPP_NUMBER;
+
+    if (watiProvider) {
+      return new WhatsAppBot(watiProvider);
+    }
+
+    if (apiKey && whatsappNumber) {
+      const provider = new WATIProvider({ apiKey, whatsappNumber });
+      return new WhatsAppBot(provider);
+    }
+
+    // Graceful degradation: return bot with null provider
+    // Only session management operations work (no message sending)
+    console.warn('[WhatsAppBot] WATI credentials not configured — running in degraded mode (session management only)');
+    const dummyProvider = new WATIProvider({
+      apiKey: 'unconfigured',
+      whatsappNumber: '+910000000000',
     });
-    return new WhatsAppBot(provider);
+    return new WhatsAppBot(dummyProvider);
   }
 }
