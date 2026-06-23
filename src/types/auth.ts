@@ -33,6 +33,7 @@ export interface JwtPayload {
   userId: string;
   role: UserRole;
   tenantId: string;
+  jti: string;
   iat: number;
   exp: number;
 }

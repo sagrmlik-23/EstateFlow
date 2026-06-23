@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
@@ -171,6 +171,7 @@ export default function ScriptEditor({
 }: ScriptEditorProps) {
   const [activeTab, setActiveTab] = useState<keyof ScriptTemplateSet>('firstContact');
   const [showPreview, setShowPreview] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   const activeScript = value[activeTab] || '';
   const activeScenario = SCENARIOS.find((s) => s.id === activeTab)!;
@@ -187,9 +188,7 @@ export default function ScriptEditor({
   // Insert variable at cursor or end
   const insertVariable = useCallback(
     (variable: string) => {
-      const textarea = document.getElementById(
-        `script-${activeTab}`
-      ) as HTMLTextAreaElement | null;
+      const textarea = textareaRef.current;
       if (textarea) {
         const start = textarea.selectionStart;
         const end = textarea.selectionEnd;
@@ -262,6 +261,7 @@ export default function ScriptEditor({
             {/* Textarea */}
             <div className="relative">
               <Textarea
+                ref={textareaRef}
                 id={`script-${scenario.id}`}
                 value={value[scenario.id]}
                 onChange={(e) =>

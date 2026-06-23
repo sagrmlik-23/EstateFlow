@@ -11,6 +11,7 @@
  * - Local development (localhost → default tenant or null)
  */
 
+import { createClient } from '@supabase/supabase-js';
 import type { NextRequest } from 'next/server';
 import type { TenantRoutingInfo } from '@/types/routing';
 import { parseSubdomain, isReservedSubdomain } from './subdomainParser';
@@ -108,92 +109,83 @@ export async function resolveTenantFromSubdomain(
 }
 
 // ---------------------------------------------------------------------------
-// Database query helpers
+// Supabase client helper
+// ---------------------------------------------------------------------------
+
+let _supabase: ReturnType<typeof createClient> | null = null;
+
+function getDb() {
+  if (_supabase) return _supabase;
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_ANON_KEY;
+  if (!url || !key) {
+    throw new Error('Supabase not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY.');
+  }
+  _supabase = createClient(url, key, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  return _supabase;
+}
+
+// ---------------------------------------------------------------------------
+// Database query helpers (direct Supabase queries, no internal API route)
 // ---------------------------------------------------------------------------
 
 /**
- * Query the tenants table by slug.
- *
- * In the Edge Runtime, direct database connections are not available.
- * This function uses a fetch-based approach to call an internal API route
- * that performs the actual DB query.
- *
- * In production, this should be replaced with a serverless DB client
- * (e.g. @vercel/postgres, Prisma Accelerate, or supabase-js in a serverless context).
+ * Query the tenants table by slug via direct Supabase query.
  */
 async function queryBySlug(slug: string): Promise<TenantRoutingInfo | null> {
   try {
-    // Use internal API route for DB queries (edge-safe approach)
-    const baseUrl = getBaseUrl();
-    const response = await fetch(
-      `${baseUrl}/api/internal/resolve-tenant?slug=${encodeURIComponent(slug)}`,
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-internal-secret': process.env.INTERNAL_API_SECRET || '',
-        },
-        // Timeout after 2 seconds
-        signal: AbortSignal.timeout(2000),
-      },
-    );
+    const { data, error } = await (getDb()
+      .from('tenants') as any)
+      .select('id, slug, name, domain, logo_url, primary_color')
+      .eq('slug', slug)
+      .maybeSingle();
 
-    if (!response.ok) return null;
+    if (error || !data) return null;
 
-    const data = await response.json();
-    if (!data.success || !data.data) return null;
-
-    return data.data as TenantRoutingInfo;
-  } catch (error) {
+    return {
+      tenantId: data.id,
+      slug: data.slug,
+      name: data.name,
+      domain: data.domain ?? null,
+      logo_url: data.logo_url ?? null,
+      primary_color: data.primary_color ?? null,
+    };
+  } catch (err) {
     if (process.env.NODE_ENV === 'development') {
-      console.debug('[tenant-resolver] queryBySlug error:', slug, error);
+      console.debug('[tenant-resolver] queryBySlug error:', slug, err);
     }
     return null;
   }
 }
 
 /**
- * Query the tenants table by custom domain.
+ * Query the tenants table by custom domain via direct Supabase query.
  */
 async function queryByDomain(domain: string): Promise<TenantRoutingInfo | null> {
   try {
-    const baseUrl = getBaseUrl();
-    const response = await fetch(
-      `${baseUrl}/api/internal/resolve-tenant?domain=${encodeURIComponent(domain)}`,
-      {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-internal-secret': process.env.INTERNAL_API_SECRET || '',
-        },
-        signal: AbortSignal.timeout(2000),
-      },
-    );
+    const { data, error } = await getDb()
+      .from('tenants')
+      .select('id, slug, name, domain, logo_url, primary_color')
+      .eq('domain', domain)
+      .maybeSingle();
 
-    if (!response.ok) return null;
+    if (error || !data) return null;
 
-    const data = await response.json();
-    if (!data.success || !data.data) return null;
-
-    return data.data as TenantRoutingInfo;
-  } catch (error) {
+    const row = data as Record<string, unknown>;
+    return {
+      tenantId: row.id as string,
+      slug: row.slug as string,
+      name: row.name as string,
+      domain: (row.domain as string) ?? null,
+      logo_url: (row.logo_url as string) ?? null,
+      primary_color: (row.primary_color as string) ?? null,
+    };
+  } catch (err) {
     if (process.env.NODE_ENV === 'development') {
-      console.debug('[tenant-resolver] queryByDomain error:', domain, error);
+      console.debug('[tenant-resolver] queryByDomain error:', domain, err);
     }
     return null;
   }
-}
-
-/**
- * Get the base URL for internal API calls.
- * Falls back to the request origin or a default for development.
- */
-function getBaseUrl(): string {
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
-  }
-  if (process.env.NEXT_PUBLIC_APP_URL) {
-    return process.env.NEXT_PUBLIC_APP_URL;
-  }
-  return 'http://localhost:3000';
 }

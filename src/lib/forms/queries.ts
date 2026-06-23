@@ -121,11 +121,11 @@ function getDb() {
   if (_supabase) return _supabase;
 
   const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY;
+  const key = process.env.SUPABASE_ANON_KEY;
 
   if (!url || !key) {
     throw new Error(
-      'Supabase not configured. Set SUPABASE_URL and SUPABASE_SERVICE_KEY (or SUPABASE_ANON_KEY).',
+      'Supabase not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY.',
     );
   }
 
@@ -286,6 +286,9 @@ export async function updateForm(formId: string, data: UpdateFormInput): Promise
     .single();
 
   if (error) {
+    if (error.code === 'PGRST116') {
+      throw new Error(`Form not found: ${formId}`);
+    }
     console.error('[forms/queries] updateForm error:', error);
     throw new Error(`Failed to update form: ${error.message}`);
   }
@@ -362,44 +365,60 @@ export async function submitFormResponse(
     }
   }
 
-  // Store the response — we use a simple upsert pattern.
-  // The actual storage depends on having a form_responses table.
-  // As a robust fallback, we increment submission_count on the form.
-  const responseId = crypto.randomUUID();
-
-  const insertData: Record<string, any> = {
-    id: responseId,
-    form_id: formId,
-    tenant_id: form.tenant_id,
-    data: data,
-    ip_address: meta?.ipAddress ?? null,
-    user_agent: meta?.userAgent ?? null,
-    created_at: new Date().toISOString(),
-  };
-
-  // Try to insert into form_responses table; fallback to just bumping the counter
+  // Use transactional RPC to validate, insert response, and increment counter atomically
   try {
-    const { error: respError } = await (supabase.from('form_responses') as any)
-      .insert(insertData);
+    const { data: rpcResult, error: rpcErr } = await (supabase as any).rpc('submit_form_response_transactional', {
+      p_form_id: formId,
+      p_data: data,
+      p_ip_address: meta?.ipAddress ?? null,
+      p_user_agent: meta?.userAgent ?? null,
+    });
 
-    if (respError) {
-      // Table might not exist yet — gracefully degrade
-      console.warn('[forms/queries] form_responses insert failed (table may not exist):', respError.message);
+    if (rpcErr) {
+      console.error('[forms/queries] submitFormResponse (rpc) error:', rpcErr);
+      throw new Error(rpcErr.message || 'Failed to submit form response');
     }
-  } catch (err) {
-    console.warn('[forms/queries] form_responses table unavailable:', err);
+
+    return rpcResult as unknown as { id: string; success: boolean; message: string };
+  } catch (rpcErr: any) {
+    // Fallback: if RPC function doesn't exist yet, use direct insert + counter
+    if (rpcErr?.message?.includes('function') || rpcErr?.code === '42883') {
+      console.warn('[forms/queries] submitFormResponse: RPC function not found, falling back to direct insert');
+
+      const responseId = crypto.randomUUID();
+      const insertData: Record<string, any> = {
+        id: responseId,
+        form_id: formId,
+        tenant_id: form.tenant_id,
+        data: data,
+        ip_address: meta?.ipAddress ?? null,
+        user_agent: meta?.userAgent ?? null,
+        created_at: new Date().toISOString(),
+      };
+
+      try {
+        const { error: respError } = await (supabase.from('form_responses') as any)
+          .insert(insertData);
+
+        if (respError) {
+          console.warn('[forms/queries] form_responses insert failed (table may not exist):', respError.message);
+        }
+      } catch (err) {
+        console.warn('[forms/queries] form_responses table unavailable:', err);
+      }
+
+      await (supabase.from('forms') as any)
+        .update({ submission_count: (form.submission_count || 0) + 1 })
+        .eq('id', formId);
+
+      return {
+        id: responseId,
+        success: true,
+        message: form.success_message || 'Thank you for your submission.',
+      };
+    }
+    throw rpcErr;
   }
-
-  // Increment submission count regardless
-  await (supabase.from('forms') as any)
-    .update({ submission_count: (form.submission_count || 0) + 1 })
-    .eq('id', formId);
-
-  return {
-    id: responseId,
-    success: true,
-    message: form.success_message || 'Thank you for your submission.',
-  };
 }
 
 // ---------------------------------------------------------------------------

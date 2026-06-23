@@ -24,7 +24,8 @@ export type Entity =
   | 'reports'
   | 'settings'
   | 'users'
-  | 'billing';
+  | 'billing'
+  | 'expenses';
 
 export const ALL_ENTITIES: readonly Entity[] = [
   'leads',
@@ -39,6 +40,7 @@ export const ALL_ENTITIES: readonly Entity[] = [
   'settings',
   'users',
   'billing',
+  'expenses',
 ] as const;
 
 // ─── Permission matrix ─────────────────────────────────────────────────────
@@ -73,6 +75,7 @@ const PERMISSIONS: Record<UserRole, RolePermissions> = {
     settings:    { create: true, read: true, update: true, delete: false },
     users:       { create: true, read: true, update: true, delete: false }, // cannot delete users
     billing:     { create: false, read: true, update: false, delete: false },
+    expenses:    { create: true, read: true, update: true, delete: true },
   },
 
   // ── sales_manager: CRUD on leads, read on reports ───────────────────────
@@ -89,6 +92,7 @@ const PERMISSIONS: Record<UserRole, RolePermissions> = {
     settings:    { create: false, read: true, update: false, delete: false },
     users:       { create: false, read: true, update: false, delete: false },
     billing:     { create: false, read: false, update: false, delete: false },
+    expenses:    { create: true, read: true, update: true, delete: false },
   },
 
   // ── agent: CR on leads (own), R on properties ───────────────────────────
@@ -105,6 +109,7 @@ const PERMISSIONS: Record<UserRole, RolePermissions> = {
     settings:    { create: false, read: false, update: false, delete: false },
     users:       { create: false, read: true, update: false, delete: false },
     billing:     { create: false, read: false, update: false, delete: false },
+    expenses:    { create: true, read: 'own', update: false, delete: false },
   },
 
   // ── field_executive: CR on attendance (own only), R on leads (assigned) ─
@@ -121,6 +126,7 @@ const PERMISSIONS: Record<UserRole, RolePermissions> = {
     settings:    { create: false, read: false, update: false, delete: false },
     users:       { create: false, read: true, update: false, delete: false },
     billing:     { create: false, read: false, update: false, delete: false },
+    expenses:    { create: true, read: 'own', update: false, delete: false },
   },
 };
 

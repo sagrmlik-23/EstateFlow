@@ -301,6 +301,7 @@ export interface ClientAIAgent {
   voice: string;
   language: string;
   greeting: string;
+  purpose?: string;
   scriptTemplates: ScriptTemplateSet;
   behavior: AgentBehavior;
   status: 'active' | 'inactive' | 'paused' | 'error';

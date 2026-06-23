@@ -180,7 +180,7 @@ export async function createCustomPricing(
   supabaseKey?: string,
 ): Promise<CustomPricing> {
   const url = supabaseUrl || process.env.SUPABASE_URL;
-  const key = supabaseKey || process.env.SUPABASE_SERVICE_KEY;
+  const key = supabaseKey || process.env.SUPABASE_ANON_KEY;
 
   if (!url || !key) {
     throw new Error('Supabase credentials not configured');
@@ -232,7 +232,7 @@ export async function getTenantPrice(
   supabaseKey?: string,
 ): Promise<{ price: number; setupFee: number; discountPercentage: number }> {
   const url = supabaseUrl || process.env.SUPABASE_URL;
-  const key = supabaseKey || process.env.SUPABASE_SERVICE_KEY;
+  const key = supabaseKey || process.env.SUPABASE_ANON_KEY;
 
   if (!url || !key) {
     throw new Error('Supabase credentials not configured');

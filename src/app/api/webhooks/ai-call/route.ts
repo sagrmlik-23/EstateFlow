@@ -164,7 +164,7 @@ async function updateCallQueue(
   },
 ): Promise<{ id: string; tenantId: string; leadId: string | null; agentId: string | null } | null> {
   const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY;
+  const supabaseKey = process.env.SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseKey) {
     logger.warn('Supabase not configured — DB updates skipped');

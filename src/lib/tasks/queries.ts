@@ -87,11 +87,11 @@ function getDb() {
   if (_supabase) return _supabase;
 
   const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY;
+  const key = process.env.SUPABASE_ANON_KEY;
 
   if (!url || !key) {
     throw new Error(
-      'Supabase not configured. Set SUPABASE_URL and SUPABASE_SERVICE_KEY (or SUPABASE_ANON_KEY).',
+      'Supabase not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY.',
     );
   }
 
@@ -231,7 +231,7 @@ export async function getTaskById(taskId: string): Promise<TaskRow | null> {
 // 4. updateTask — Update task fields
 // ---------------------------------------------------------------------------
 
-export async function updateTask(taskId: string, data: UpdateTaskInput): Promise<TaskRow> {
+export async function updateTask(taskId: string, data: UpdateTaskInput, expectedUpdatedAt?: string): Promise<TaskRow> {
   const supabase = getDb();
 
   const updateData: Record<string, any> = {};
@@ -253,13 +253,20 @@ export async function updateTask(taskId: string, data: UpdateTaskInput): Promise
 
   updateData.updated_at = new Date().toISOString();
 
-  const { data: result, error } = await (supabase.from('tasks') as any)
+  let query = (supabase.from('tasks') as any)
     .update(updateData)
-    .eq('id', taskId)
-    .select()
-    .single();
+    .eq('id', taskId);
+
+  if (expectedUpdatedAt) {
+    query = query.eq('updated_at', expectedUpdatedAt);
+  }
+
+  const { data: result, error } = await query.select().single();
 
   if (error) {
+    if (error.code === 'PGRST116') {
+      throw new Error(`Task not found or conflict: ${taskId}`);
+    }
     console.error('[tasks/queries] updateTask error:', error);
     throw new Error(`Failed to update task: ${error.message}`);
   }

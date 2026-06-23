@@ -65,10 +65,7 @@ export async function PATCH(
       );
     }
 
-    if (!canUpdate(auth.role, 'attendance')) {
-      // Using 'attendance' as the permission entity since 'expenses' isn't
-      // in the permission matrix. Manager/sales_manager roles have full access.
-      // In practice, we check for a role with expense-approval capability.
+    if (!canUpdate(auth.role, 'expenses')) {
       if (auth.role !== 'tenant_admin' && auth.role !== 'sales_manager' && auth.role !== 'super_admin') {
         return NextResponse.json(
           { success: false, error: 'Forbidden: insufficient permissions' },

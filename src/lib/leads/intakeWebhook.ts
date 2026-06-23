@@ -7,6 +7,7 @@
  * and webhook callbacks.
  */
 
+import { createClient } from '@supabase/supabase-js';
 import type { LeadSourceValue } from '@/lib/constants';
 import { LEAD_SOURCES } from '@/lib/constants';
 
@@ -133,6 +134,24 @@ export function normalizePhone(phone: string): string {
 // ─── Duplicate Detection ────────────────────────────────────────────────────
 
 /**
+ * Supabase client helper.
+ */
+let _supabase: ReturnType<typeof createClient> | null = null;
+
+function getDb() {
+  if (_supabase) return _supabase;
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_ANON_KEY;
+  if (!url || !key) {
+    throw new Error('Supabase not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY.');
+  }
+  _supabase = createClient(url, key, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  return _supabase;
+}
+
+/**
  * In-memory lead store for duplicate detection (stub).
  * In production, this queries the database.
  */
@@ -149,17 +168,14 @@ export async function detectDuplicate(
   phone: string,
   tenantId: string,
 ): Promise<string | null> {
-  // In production:
-  //   const { data } = await supabase
-  //     .from('leads')
-  //     .select('id')
-  //     .eq('phone', phone)
-  //     .eq('tenant_id', tenantId)
-  //     .single();
-  //   return data?.id ?? null;
+  const { data } = await (getDb()
+    .from('leads') as any)
+    .select('id')
+    .eq('phone', phone)
+    .eq('tenant_id', tenantId)
+    .maybeSingle();
 
-  const compositeKey = `${tenantId}:${phone}`;
-  return leadPhoneIndex.get(compositeKey) ?? null;
+  return data?.id ?? null;
 }
 
 // ─── Source-Specific Parsers ────────────────────────────────────────────────
@@ -362,32 +378,40 @@ export async function processWebhookLead(
     }
 
     // 4. Create the lead in the database
-    const leadId = crypto.randomUUID();
     const now = new Date().toISOString();
 
-    // In production:
-    //   await supabase.from('leads').insert({
-    //     id: leadId,
-    //     tenant_id: tenantId,
-    //     first_name: parsed.firstName,
-    //     last_name: parsed.lastName,
-    //     email: parsed.email ?? null,
-    //     phone: normalizedPhone,
-    //     alt_phone: parsed.altPhone ?? null,
-    //     source: parsed.source,
-    //     source_id: parsed.sourceId ?? null,
-    //     property_type: parsed.propertyType ?? null,
-    //     property_interest: parsed.propertyInterest ?? null,
-    //     budget: parsed.budget ?? null,
-    //     city: parsed.city ?? null,
-    //     locality: parsed.locality ?? null,
-    //     message: parsed.message ?? null,
-    //     status: 'new',
-    //     assigned_to: null,
-    //     metadata: parsed.metadata,
-    //     created_at: now,
-    //     updated_at: now,
-    //   });
+    const { data: inserted, error: insertError } = await (getDb()
+      .from('leads') as any)
+      .insert({
+        tenant_id: tenantId,
+        first_name: parsed.firstName,
+        last_name: parsed.lastName,
+        email: parsed.email ?? null,
+        phone: normalizedPhone,
+        alt_phone: parsed.altPhone ?? null,
+        source: parsed.source,
+        source_id: parsed.sourceId ?? null,
+        property_type: parsed.propertyType ?? null,
+        property_interest: parsed.propertyInterest ?? null,
+        budget: parsed.budget ?? null,
+        city: parsed.city ?? null,
+        locality: parsed.locality ?? null,
+        message: parsed.message ?? null,
+        status: 'new',
+        assigned_to: null,
+        metadata: parsed.metadata,
+        created_at: now,
+        updated_at: now,
+      })
+      .select('id')
+      .single();
+
+    if (insertError) {
+      errors.push(`Database insert error: ${insertError.message}`);
+      return { success: false, lead: null, duplicate: false, duplicateOf: null, errors };
+    }
+
+    const leadId = inserted?.id ?? crypto.randomUUID();
 
     const lead: ProcessedLead = {
       id: leadId,

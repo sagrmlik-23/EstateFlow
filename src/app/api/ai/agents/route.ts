@@ -128,6 +128,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         status: 200,
         headers: {
           ...rateHeaders,
+          'Cache-Control': 'private, no-store',
           'X-Request-Id': requestId,
         },
       },

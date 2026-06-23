@@ -22,6 +22,10 @@ import type { UserRole } from '@/types/auth';
 // Zod schema for PATCH
 // ---------------------------------------------------------------------------
 
+const IdParamsSchema = z.object({
+  id: z.string().uuid('Invalid agent ID format'),
+});
+
 const transferToHumanSchema = z.object({
   budgetThreshold: z.number().nonnegative().optional(),
   angerDetected: z.boolean().optional(),
@@ -130,7 +134,7 @@ export async function GET(
       },
       {
         status: 200,
-        headers: { ...rateHeaders, 'X-Request-Id': requestId },
+        headers: { ...rateHeaders, 'Cache-Control': 'private, no-store', 'X-Request-Id': requestId },
       },
     );
   } catch (error) {
@@ -262,7 +266,7 @@ export async function PATCH(
       },
       {
         status: 200,
-        headers: { ...rateHeaders, 'X-Request-Id': requestId },
+        headers: { ...rateHeaders, 'Cache-Control': 'private, no-store', 'X-Request-Id': requestId },
       },
     );
   } catch (error) {
@@ -359,7 +363,7 @@ export async function DELETE(
       },
       {
         status: 200,
-        headers: { ...rateHeaders, 'X-Request-Id': requestId },
+        headers: { ...rateHeaders, 'Cache-Control': 'private, no-store', 'X-Request-Id': requestId },
       },
     );
   } catch (error) {

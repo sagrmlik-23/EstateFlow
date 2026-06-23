@@ -91,11 +91,11 @@ function getSupabase() {
   if (supabaseClient) return supabaseClient;
 
   const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY;
+  const key = process.env.SUPABASE_ANON_KEY;
 
   if (!url || !key) {
     throw new Error(
-      'Supabase not configured. Set SUPABASE_URL and SUPABASE_SERVICE_KEY (or SUPABASE_ANON_KEY).',
+      'Supabase not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY.',
     );
   }
 
@@ -253,6 +253,9 @@ export async function approveExpense(
     .single();
 
   if (error) {
+    if (error.code === 'PGRST116') {
+      throw new Error(`Expense not found: ${expenseId}`);
+    }
     console.error('[expenses/queries] approveExpense error:', error);
     throw new Error(`Failed to ${status} expense: ${error.message}`);
   }

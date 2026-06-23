@@ -151,9 +151,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
   } catch (error) {
     console.error('[webhooks/google]', error);
+    // Return 200 to prevent webhook retries on server errors.
+    // Google will still receive the error in the response body for logging.
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
-      { status: 500 },
+      { status: 200 },
     );
   }
 }

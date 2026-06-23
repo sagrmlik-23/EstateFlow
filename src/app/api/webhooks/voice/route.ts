@@ -133,7 +133,7 @@ async function updateCallRecord(
   },
 ): Promise<{ id: string; tenantId: string; leadId: string | null; agentId: string | null } | null> {
   const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY;
+  const supabaseKey = process.env.SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !supabaseKey) {
     logger.warn('Supabase not configured — DB updates skipped');
@@ -312,9 +312,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     );
   } catch (error) {
     logger.error({ error }, 'Unhandled error in voice webhook');
+    // Return 200 to prevent webhook provider retries on server errors.
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
-      { status: 500 },
+      { status: 200 },
     );
   }
 }

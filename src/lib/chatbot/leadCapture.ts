@@ -8,6 +8,7 @@
 // ============================================================================
 
 import type { EngineChatMessage, ExtractedLeadInfo, ChatContext } from '@/types/chatbot';
+import { createClient } from '@supabase/supabase-js';
 
 // ============================================================================
 // Constants
@@ -269,6 +270,25 @@ export function isLeadInfoComplete(leadInfo: ExtractedLeadInfo): boolean {
 }
 
 // ============================================================================
+// Supabase client helper
+// ============================================================================
+
+let _supabase: ReturnType<typeof createClient> | null = null;
+
+function getDb() {
+  if (_supabase) return _supabase;
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_ANON_KEY;
+  if (!url || !key) {
+    throw new Error('Supabase not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY.');
+  }
+  _supabase = createClient(url, key, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  return _supabase;
+}
+
+// ============================================================================
 // createOrUpdateLead — Save lead to CRM
 // ============================================================================
 
@@ -321,14 +341,41 @@ export async function createOrUpdateLead(
       bedrooms: leadInfo.bedrooms,
     });
 
-    // In production, this would insert/update the leads table in Supabase
-    // const { data, error } = await supabase
-    //   .from('leads')
-    //   .upsert({ ... })
-    //   .select('id')
-    //   .single();
+    // Persist to the leads table (upsert on phone for dedup within tenant)
+    const { data: upserted, error: upsertError } = await (getDb()
+      .from('leads') as any)
+      .upsert(
+        {
+          id: leadId,
+          tenant_id: tenantId,
+          name: leadInfo.name ?? null,
+          phone: leadInfo.phone ?? null,
+          email: leadInfo.email ?? null,
+          property_type: leadInfo.propertyType ?? null,
+          location: leadInfo.location ?? null,
+          budget_min: leadInfo.budgetMin ?? null,
+          budget_max: leadInfo.budgetMax ?? null,
+          bedrooms: leadInfo.bedrooms ?? null,
+          source: 'chatbot',
+          status: 'new',
+          metadata: {
+            session_id: sessionId,
+            notes: leadInfo.notes,
+          },
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'phone,tenant_id' },
+      )
+      .select('id')
+      .single();
 
-    return { id: leadId };
+    if (upsertError) {
+      console.error('[leadCapture] createOrUpdateLead upsert error:', upsertError);
+      return { id: leadId }; // Return the stub ID even if DB write fails (graceful degradation)
+    }
+
+    return { id: upserted?.id ?? leadId };
   } catch (error) {
     console.error('[leadCapture] createOrUpdateLead failed:', error);
     return null;

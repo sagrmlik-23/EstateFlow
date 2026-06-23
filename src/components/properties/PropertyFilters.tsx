@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/select';
 import { PROPERTY_TYPES, AVAILABILITY_STATUSES } from '@/lib/constants';
 import { getPropertyTypeLabel } from '@/lib/utils';
+import { useDebouncedCallback } from '@/hooks/use-debounce';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -67,6 +68,12 @@ export default function PropertyFilters({ className }: PropertyFiltersProps) {
   const currentBedrooms = searchParams.get('bedrooms') ?? '';
   const currentLocation = searchParams.get('location') ?? '';
 
+  // Local state for search input (avoids lag from debounced URL updates)
+  const [searchInput, setSearchInput] = useState(currentSearch);
+  useEffect(() => {
+    setSearchInput(currentSearch);
+  }, [currentSearch]);
+
   // Build new URL
   const updateSearchParam = useCallback(
     (key: string, value: string) => {
@@ -81,6 +88,13 @@ export default function PropertyFilters({ className }: PropertyFiltersProps) {
       router.push(`${pathname}?${params.toString()}`);
     },
     [router, pathname, searchParams],
+  );
+
+  const debouncedSearch = useDebouncedCallback(
+    (value: string) => {
+      updateSearchParam('search', value);
+    },
+    300,
   );
 
   const clearAllFilters = useCallback(() => {
@@ -104,8 +118,11 @@ export default function PropertyFilters({ className }: PropertyFiltersProps) {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search properties..."
-            value={currentSearch}
-            onChange={(e) => updateSearchParam('search', e.target.value)}
+            value={searchInput}
+            onChange={(e) => {
+              setSearchInput(e.target.value);
+              debouncedSearch(e.target.value);
+            }}
             className="pl-9"
           />
         </div>

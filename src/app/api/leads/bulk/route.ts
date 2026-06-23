@@ -18,7 +18,7 @@ import type { UserRole } from '@/types/auth';
 
 const ALLOWED_STATUSES = [
   'new', 'contacted', 'qualified', 'proposal', 'negotiation',
-  'won', 'lost', 'archived',
+  'closed_won', 'closed_lost', 'archived',
 ] as const;
 
 const bulkUpdateSchema = z.object({
@@ -49,7 +49,7 @@ export type BulkUpdateBody = z.infer<typeof bulkUpdateSchema>;
  * {
  *   lead_ids: string[] (UUIDs, 1–500),
  *   data: {
- *     status?: 'new' | 'contacted' | 'qualified' | 'proposal' | 'negotiation' | 'won' | 'lost' | 'archived',
+ *     status?: 'new' | 'contacted' | 'qualified' | 'proposal' | 'negotiation' | 'closed_won' | 'closed_lost' | 'archived',
  *     assigned_agent_id?: string | null (UUID),
  *     source?: string,
  *     ai_score?: number | null (0–100)
@@ -125,7 +125,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       entityId: `bulk:${parsed.data.lead_ids.length}ids`,
       oldValues: null,
       newValues: {
-        count: parsed.data.lead_ids.length,
+        count: updatedCount,
         changes: parsed.data.data,
       },
       ipAddress: clientIp,

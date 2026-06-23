@@ -46,7 +46,7 @@ function isIndiaRegion(region?: string, phone?: string): boolean {
   }
   if (phone) {
     const normalized = phone.replace(/[\s+\-]/g, '').trim();
-    if (normalized.startsWith('+91') || normalized.startsWith('91') || normalized.startsWith('011')) return true;
+    if (normalized.startsWith('+91') || normalized.startsWith('91')) return true;
   }
   return false;
 }

@@ -32,8 +32,8 @@ const STATUS_TABS = [
   { value: 'qualified', label: 'Qualified' },
   { value: 'proposal', label: 'Proposal' },
   { value: 'negotiation', label: 'Negotiation' },
-  { value: 'won', label: 'Won' },
-  { value: 'lost', label: 'Lost' },
+  { value: 'closed_won', label: 'Won' },
+  { value: 'closed_lost', label: 'Lost' },
 ];
 
 export default function LeadsPage({ params }: { params: Promise<{ tenant: string }> }) {

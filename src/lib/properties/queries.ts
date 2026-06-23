@@ -104,7 +104,7 @@ function getSupabase() {
   if (supabaseClient) return supabaseClient;
 
   const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY;
+  const key = process.env.SUPABASE_ANON_KEY;
 
   if (!url || !key) {
     console.warn('[properties/queries] Supabase not configured');
@@ -309,6 +309,7 @@ export async function createProperty(
 export async function updateProperty(
   propertyId: string,
   data: UpdatePropertyInput,
+  expectedUpdatedAt?: string,
 ): Promise<ApiResponse<PropertyRow | null>> {
   const supabase = getSupabase();
   if (!supabase) {
@@ -338,15 +339,20 @@ export async function updateProperty(
     // Always update the updated_at timestamp
     updateFields.updated_at = new Date().toISOString();
 
-    const { data: updatedProperty, error } = await (supabase
-      .from('properties') as any)
+    let query = (supabase.from('properties') as any)
       .update(updateFields)
-      .eq('id', propertyId)
-      .select()
-      .single();
+      .eq('id', propertyId);
+
+    // Optimistic concurrency: only update if the row hasn't changed since last read
+    if (expectedUpdatedAt) {
+      query = query.eq('updated_at', expectedUpdatedAt);
+    }
+
+    const { data: updatedProperty, error } = await query.select().single();
 
     if (error) {
       if (error.code === 'PGRST116') {
+        // PGRST116 = no rows returned; could be not found OR optimistic conflict
         return successResponse(null, null);
       }
       console.error('[properties/updateProperty]', error);

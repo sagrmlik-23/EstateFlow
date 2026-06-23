@@ -143,7 +143,7 @@ export default function AgentForm({
   const [voice, setVoice] = useState(initialData?.voice || 'default');
   const [language, setLanguage] = useState(initialData?.language || 'en');
   const [purpose, setPurpose] = useState(initialData?.greeting || '');
-  const [purposeCategory, setPurposeCategory] = useState('');
+  const [purposeCategory, setPurposeCategory] = useState(initialData?.purpose || '');
   const [maxConcurrentCalls, setMaxConcurrentCalls] = useState(
     initialData?.behavior?.maxCallDuration?.toString() || '5'
   );

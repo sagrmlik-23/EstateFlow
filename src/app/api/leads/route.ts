@@ -29,11 +29,11 @@ const ALLOWED_SOURCES = [
 
 const ALLOWED_STATUSES = [
   'new', 'contacted', 'qualified', 'proposal', 'negotiation',
-  'won', 'lost', 'archived',
+  'closed_won', 'closed_lost', 'archived',
 ] as const;
 
 const ALLOWED_PROPERTY_TYPES = [
-  'apartment', 'villa', 'plot', 'commercial', 'penthouse', 'other',
+  'apartment', 'house', 'villa', 'commercial', 'land', 'penthouse', 'studio',
 ] as const;
 
 const ALLOWED_SORT_COLUMNS = [
@@ -173,6 +173,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       {
         status: 200,
         headers: {
+          'Cache-Control': 'private, no-store',
           ...rateHeaders,
           'X-Request-Id': requestId,
         },

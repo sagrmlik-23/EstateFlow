@@ -22,11 +22,11 @@ function getDb() {
   if (_supabase) return _supabase;
 
   const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY;
+  const key = process.env.SUPABASE_ANON_KEY;
 
   if (!url || !key) {
     throw new Error(
-      'Supabase not configured. Set SUPABASE_URL and SUPABASE_SERVICE_KEY (or SUPABASE_ANON_KEY).',
+      'Supabase not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY.',
     );
   }
 
@@ -63,7 +63,7 @@ export interface ScoreUpdateResult {
  *   - interestLevel > 40: +10 points
  *   - otherwise: -10 points
  *   - Score is clamped to [0, 100]
- *   - Status updated to 'interested' if score >= 60
+ *   - Status updated to 'qualified' if score >= 60
  *   - Status updated to 'qualified' if score >= 80
  */
 export async function updateLeadScoreFromCall(
@@ -108,11 +108,11 @@ export async function updateLeadScoreFromCall(
   let newStatus = statusBefore;
   let statusUpdated = false;
 
-  if (newScore >= 80 && statusBefore !== 'qualified' && statusBefore !== 'won') {
+  if (newScore >= 80 && statusBefore !== 'qualified' && statusBefore !== 'closed_won') {
     newStatus = 'qualified';
     statusUpdated = true;
   } else if (newScore >= 60 && statusBefore === 'new') {
-    newStatus = 'interested';
+    newStatus = 'qualified';
     statusUpdated = true;
   }
 

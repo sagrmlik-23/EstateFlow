@@ -24,6 +24,10 @@ import type { UserRole } from '@/types/auth';
 // Zod schemas
 // ---------------------------------------------------------------------------
 
+const IdParamsSchema = z.object({
+  id: z.string().uuid('Invalid task ID format'),
+});
+
 const updateTaskSchema = z.object({
   title: z.string().min(1).max(500).optional(),
   description: z.string().max(5000).nullable().optional(),
@@ -45,6 +49,15 @@ export async function GET(
 ): Promise<NextResponse> {
   try {
     const { id } = await params;
+
+    // ── Validate param ─────────────────────────────────────────────────────
+    const paramResult = IdParamsSchema.safeParse({ id });
+    if (!paramResult.success) {
+      return NextResponse.json(
+        { success: false, data: null, error: 'Invalid task ID', meta: null },
+        { status: 400 },
+      );
+    }
 
     const userId = request.headers.get('x-user-id');
     const tenantId = request.headers.get('x-tenant-id');
@@ -93,7 +106,7 @@ export async function GET(
       },
       {
         status: 200,
-        headers: { ...rateHeaders, 'X-Request-Id': requestId },
+        headers: { ...rateHeaders, 'Cache-Control': 'private, no-store', 'X-Request-Id': requestId },
       },
     );
   } catch (error) {
@@ -115,6 +128,15 @@ export async function PATCH(
 ): Promise<NextResponse> {
   try {
     const { id } = await params;
+
+    // ── Validate param ─────────────────────────────────────────────────────
+    const paramResult = IdParamsSchema.safeParse({ id });
+    if (!paramResult.success) {
+      return NextResponse.json(
+        { success: false, data: null, error: 'Invalid task ID', meta: null },
+        { status: 400 },
+      );
+    }
 
     const userId = request.headers.get('x-user-id');
     const tenantId = request.headers.get('x-tenant-id');
@@ -178,12 +200,23 @@ export async function PATCH(
       );
     }
 
-    const updatedTask = await withTenantContext(
-      tenantId,
-      userId,
-      userRole || 'agent',
-      () => updateTask(id, parsed.data),
-    );
+    let updatedTask;
+    try {
+      updatedTask = await withTenantContext(
+        tenantId,
+        userId,
+        userRole || 'agent',
+        () => updateTask(id, parsed.data, oldTask.updated_at),
+      );
+    } catch (updateErr: any) {
+      if (updateErr?.message?.includes('not found or conflict')) {
+        return NextResponse.json(
+          { success: false, data: null, error: 'Conflict — resource was modified by another request. Please reload and try again.', meta: null },
+          { status: 409 },
+        );
+      }
+      throw updateErr;
+    }
 
     const changedFields: Record<string, unknown> = {};
     for (const key of Object.keys(parsed.data)) {
@@ -210,7 +243,7 @@ export async function PATCH(
       },
       {
         status: 200,
-        headers: { ...rateHeaders, 'X-Request-Id': requestId },
+        headers: { ...rateHeaders, 'Cache-Control': 'private, no-store', 'X-Request-Id': requestId },
       },
     );
   } catch (error) {
@@ -232,6 +265,15 @@ export async function DELETE(
 ): Promise<NextResponse> {
   try {
     const { id } = await params;
+
+    // ── Validate param ─────────────────────────────────────────────────────
+    const paramResult = IdParamsSchema.safeParse({ id });
+    if (!paramResult.success) {
+      return NextResponse.json(
+        { success: false, data: null, error: 'Invalid task ID', meta: null },
+        { status: 400 },
+      );
+    }
 
     const userId = request.headers.get('x-user-id');
     const tenantId = request.headers.get('x-tenant-id');
@@ -296,7 +338,7 @@ export async function DELETE(
       },
       {
         status: 200,
-        headers: { ...rateHeaders, 'X-Request-Id': requestId },
+        headers: { ...rateHeaders, 'Cache-Control': 'private, no-store', 'X-Request-Id': requestId },
       },
     );
   } catch (error) {

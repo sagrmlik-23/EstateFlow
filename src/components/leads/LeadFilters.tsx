@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/select';
 import { LEAD_STATUSES, LEAD_SOURCES } from '@/lib/constants';
 import { cn } from '@/lib/utils';
+import { useDebouncedCallback } from '@/hooks/use-debounce';
 
 const STATUS_OPTIONS = [
   { value: '', label: 'All Statuses' },
@@ -108,9 +109,16 @@ export function LeadFilters({ onSearch, className }: LeadFiltersProps) {
     (value: string) => {
       setSearchInput(value);
       onSearch?.(value);
+      debouncedPushSearch(value);
+    },
+    [onSearch],
+  );
+
+  const debouncedPushSearch = useDebouncedCallback(
+    (value: string) => {
       router.push(`${pathname}?${createQueryString({ search: value })}`);
     },
-    [router, pathname, createQueryString, onSearch]
+    300,
   );
 
   const clearAll = useCallback(() => {

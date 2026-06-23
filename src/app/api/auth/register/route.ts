@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import * as bcrypt from 'bcryptjs';
+import { createClient } from '@supabase/supabase-js';
 import { generateToken } from '@/lib/auth/jwt';
 import type { RegisterRequest, RegisterResponse } from '@/types/auth';
 
@@ -100,7 +101,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     // ── Generate JWT ─────────────────────────────────────────────────────
-    const token = generateToken(userId, 'tenant_admin', tenantId);
+    const token = await generateToken(userId, 'tenant_admin', tenantId);
 
     const responseData: RegisterResponse = {
       token,
@@ -114,10 +115,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       },
     };
 
-    return NextResponse.json(
+    const response = NextResponse.json(
       { success: true, data: responseData },
       { status: 201 },
     );
+
+    // Set JWT as HttpOnly Secure SameSite=Strict cookie
+    const cookieName = 'estateflow-jwt';
+    const cookieMaxAge = 15 * 60; // 15 minutes
+    response.headers.set(
+      'Set-Cookie',
+      `${cookieName}=${token}; HttpOnly; Secure; SameSite=Strict; Path=/; Max-Age=${cookieMaxAge}`,
+    );
+
+    return response;
   } catch (error) {
     console.error('[auth/register]', error);
     return NextResponse.json(
@@ -145,8 +156,26 @@ function validateRegistration(body: Partial<RegisterRequest>): string | null {
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(body.adminEmail)) {
     return 'Invalid email format';
   }
-  if (!body.adminPassword || typeof body.adminPassword !== 'string' || body.adminPassword.length < 8) {
+  if (!body.adminPassword || typeof body.adminPassword !== 'string') {
+    return 'Admin password is required';
+  }
+  // Minimum complexity: 8+ chars, at least 1 uppercase, 1 number, 1 special
+  if (body.adminPassword.length < 8) {
     return 'Password must be at least 8 characters';
+  }
+  if (!/[A-Z]/.test(body.adminPassword)) {
+    return 'Password must contain at least one uppercase letter';
+  }
+  if (!/[0-9]/.test(body.adminPassword)) {
+    return 'Password must contain at least one number';
+  }
+  if (!/[^A-Za-z0-9]/.test(body.adminPassword)) {
+    return 'Password must contain at least one special character';
+  }
+  // Cap password length to 128 bytes for bcrypt
+  const passwordBytes = new TextEncoder().encode(body.adminPassword);
+  if (passwordBytes.length > 128) {
+    return 'Password must be at most 128 bytes';
   }
   if (!body.adminName || typeof body.adminName !== 'string' || body.adminName.trim().length < 2) {
     return 'Admin name must be at least 2 characters';
@@ -154,7 +183,7 @@ function validateRegistration(body: Partial<RegisterRequest>): string | null {
   return null;
 }
 
-// ─── Database helpers (stubs — replace with actual DB client) ──────────────
+// ─── Database helpers ────────────────────────────────────────────────────
 
 interface TenantRow {
   id: string;
@@ -176,31 +205,89 @@ interface UserRow {
   updated_at: string;
 }
 
+// ── Supabase client singleton ─────────────────────────────────────────────
+
+let _supabase: ReturnType<typeof createClient> | null = null;
+
+function getDb() {
+  if (_supabase) return _supabase;
+
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_ANON_KEY;
+
+  if (!url || !key) {
+    throw new Error(
+      'Supabase not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY.',
+    );
+  }
+
+  _supabase = createClient(url, key);
+  return _supabase;
+}
+
+/**
+ * Find a tenant by slug. Returns { id } if found, null otherwise.
+ */
 async function findTenantBySlug(slug: string): Promise<{ id: string } | null> {
-  // Stub — replace with: prisma.tenants.findUnique({ where: { slug } });
-  void slug;
-  return null;
+  const supabase = getDb();
+  const { data, error } = await supabase
+    .from('tenants')
+    .select('id')
+    .eq('slug', slug)
+    .single();
+
+  if (error || !data) return null;
+  return data as { id: string };
 }
 
+/**
+ * Find a user by email. Returns { id } if found, null otherwise.
+ */
 async function findUserByEmail(email: string): Promise<{ id: string } | null> {
-  // Stub — replace with: prisma.users.findUnique({ where: { email } });
-  void email;
-  return null;
+  const supabase = getDb();
+  const { data, error } = await supabase
+    .from('users')
+    .select('id')
+    .eq('email', email)
+    .single();
+
+  if (error || !data) return null;
+  return data as { id: string };
 }
 
+/**
+ * Create a new tenant. Returns true on success.
+ */
 async function createTenant(tenant: TenantRow): Promise<boolean> {
-  // Stub — replace with: prisma.tenants.create({ data: tenant });
-  void tenant;
-  return true; // Assume success for stub
+  const supabase = getDb();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await supabase
+    .from('tenants')
+    .insert(tenant as any);
+
+  return !error;
 }
 
+/**
+ * Create a new user. Returns true on success.
+ */
 async function createUser(user: UserRow): Promise<boolean> {
-  // Stub — replace with: prisma.users.create({ data: user });
-  void user;
-  return true; // Assume success for stub
+  const supabase = getDb();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { error } = await supabase
+    .from('users')
+    .insert(user as any);
+
+  return !error;
 }
 
+/**
+ * Delete a tenant by ID (best-effort rollback).
+ */
 async function deleteTenant(tenantId: string): Promise<void> {
-  // Stub — replace with: prisma.tenants.delete({ where: { id: tenantId } });
-  void tenantId;
+  const supabase = getDb();
+  await supabase
+    .from('tenants')
+    .delete()
+    .eq('id', tenantId);
 }

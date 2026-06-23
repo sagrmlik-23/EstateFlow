@@ -79,11 +79,11 @@ function getDb() {
   if (_supabase) return _supabase;
 
   const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY;
+  const key = process.env.SUPABASE_ANON_KEY;
 
   if (!url || !key) {
     throw new Error(
-      'Supabase not configured. Set SUPABASE_URL and SUPABASE_SERVICE_KEY (or SUPABASE_ANON_KEY).',
+      'Supabase not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY.',
     );
   }
 
@@ -231,36 +231,65 @@ export async function markAttendance(
   // --- Build combined notes ---
   const combinedNotes = [data.notes, gpsNotes].filter(Boolean).join(' | ') || null;
 
-  // --- Upsert (INSERT or UPDATE on unique constraint) ---
-  const insertData: Record<string, any> = {
-    tenant_id: tenantId,
-    user_id: userId,
-    date: data.date,
-    clock_in: data.checkIn ?? null,
-    clock_out: data.checkOut ?? null,
-    latitude: data.latitude ?? null,
-    longitude: data.longitude ?? null,
-    selfie_url: data.selfieUrl ?? null,
-    selfie_hash: selfieHash,
-    status: data.status ?? 'present',
-    notes: combinedNotes,
-    updated_at: new Date().toISOString(),
-  };
+  // --- Upsert using transactional RPC ---
+  try {
+    const { data: result, error } = await (supabase as any).rpc('mark_attendance_transactional', {
+      p_tenant_id: tenantId,
+      p_user_id: userId,
+      p_date: data.date,
+      p_clock_in: data.checkIn ?? null,
+      p_clock_out: data.checkOut ?? null,
+      p_latitude: data.latitude ?? null,
+      p_longitude: data.longitude ?? null,
+      p_selfie_url: data.selfieUrl ?? null,
+      p_selfie_hash: selfieHash,
+      p_status: data.status ?? 'present',
+      p_notes: combinedNotes,
+    } as any);
 
-  const { data: result, error } = await (supabase.from('attendance') as any)
-    .upsert(insertData, {
-      onConflict: 'tenant_id,user_id,date',
-      ignoreDuplicates: false,
-    })
-    .select()
-    .single();
+    if (error) {
+      console.error('[attendance/queries] markAttendance (rpc) error:', error);
+      throw new Error(`Failed to mark attendance: ${error.message}`);
+    }
 
-  if (error) {
-    console.error('[attendance/queries] markAttendance error:', error);
-    throw new Error(`Failed to mark attendance: ${error.message}`);
+    return result as unknown as AttendanceRow;
+  } catch (rpcErr: any) {
+    // Fallback: if RPC function doesn't exist yet, use direct upsert
+    if (rpcErr?.message?.includes('function') || rpcErr?.code === '42883') {
+      console.warn('[attendance/queries] markAttendance: RPC function not found, falling back to direct upsert');
+
+      const insertData: Record<string, any> = {
+        tenant_id: tenantId,
+        user_id: userId,
+        date: data.date,
+        clock_in: data.checkIn ?? null,
+        clock_out: data.checkOut ?? null,
+        latitude: data.latitude ?? null,
+        longitude: data.longitude ?? null,
+        selfie_url: data.selfieUrl ?? null,
+        selfie_hash: selfieHash,
+        status: data.status ?? 'present',
+        notes: combinedNotes,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { data: result, error } = await (supabase.from('attendance') as any)
+        .upsert(insertData, {
+          onConflict: 'tenant_id,user_id,date',
+          ignoreDuplicates: false,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('[attendance/queries] markAttendance error:', error);
+        throw new Error(`Failed to mark attendance: ${error.message}`);
+      }
+
+      return result as AttendanceRow;
+    }
+    throw rpcErr;
   }
-
-  return result as AttendanceRow;
 }
 
 // ---------------------------------------------------------------------------
@@ -406,9 +435,19 @@ export async function getAttendanceStats(
 
   const records = (data as { status: string }[]) || [];
 
-  // Count working days (exclude weekends by default, but include all marked days)
+  // Calculate total working days in the month range (exclude weekends)
+  let totalCalendarDays = 0;
+  const startDate = new Date(year, mon - 1, 1);
+  const endDate = new Date(year, mon - 1, lastDay);
+  for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+    const dayOfWeek = d.getDay();
+    if (dayOfWeek !== 0 && dayOfWeek !== 6) { // Skip Saturday (6) and Sunday (0)
+      totalCalendarDays++;
+    }
+  }
+
   const stats: AttendanceStats = {
-    total_days: records.length,
+    total_days: totalCalendarDays,
     present: 0,
     absent: 0,
     late: 0,
@@ -484,6 +523,9 @@ export async function updateAttendance(
     .single();
 
   if (error) {
+    if (error.code === 'PGRST116') {
+      throw new Error(`Attendance record not found: ${attendanceId}`);
+    }
     console.error('[attendance/queries] updateAttendance error:', error);
     throw new Error(`Failed to update attendance: ${error.message}`);
   }

@@ -93,11 +93,11 @@ function getSupabase() {
   if (supabaseClient) return supabaseClient;
 
   const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY;
+  const key = process.env.SUPABASE_ANON_KEY;
 
   if (!url || !key) {
     throw new Error(
-      'Supabase not configured. Set SUPABASE_URL and SUPABASE_SERVICE_KEY (or SUPABASE_ANON_KEY).',
+      'Supabase not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY.',
     );
   }
 
@@ -212,12 +212,15 @@ export async function calculateCommission(
     }
   }
 
-  // Calculate commission
+  // Calculate commission — when both percentage and fixed_amount are set, use the larger
   let commissionAmount = 0;
-  if (fixedAmount != null) {
+  const percentageAmount = (dealValue * percentage) / 100;
+  if (fixedAmount != null && percentage > 0) {
+    commissionAmount = Math.max(fixedAmount, percentageAmount);
+  } else if (fixedAmount != null) {
     commissionAmount = fixedAmount;
   } else {
-    commissionAmount = (dealValue * percentage) / 100;
+    commissionAmount = percentageAmount;
   }
 
   return {

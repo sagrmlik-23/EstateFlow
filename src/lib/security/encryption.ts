@@ -8,15 +8,43 @@
  * Storage format: base64(iv + ciphertext + authTag)
  *   - iv:      16 bytes
  *   - authTag: 16 bytes
+ *
+ * ⚠️ EDGE RUNTIME COMPATIBILITY:
+ * This module uses Node.js `crypto` which is NOT available in the Edge
+ * Runtime (Vercel Edge, Cloudflare Workers). When invoked in an Edge
+ * environment, encrypt/decrypt will throw an error. Use this module only
+ * in Node.js serverless functions or API routes. For Edge, use the Web
+ * Crypto API (crypto.subtle) with a separate implementation.
  */
 
-import * as crypto from 'crypto';
+import * as nodeCrypto from 'crypto';
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16;
 const AUTH_TAG_LENGTH = 16;
 const KEY_ENCODING: BufferEncoding = 'hex';
 const OUTPUT_ENCODING: BufferEncoding = 'base64';
+
+// ---------------------------------------------------------------------------
+// Runtime check
+// ---------------------------------------------------------------------------
+
+/**
+ * Assert that we are running in a Node.js runtime (not Edge).
+ * Throws a clear error if invoked in Edge, Cloudflare Workers, or
+ * any environment where `Buffer` or `crypto` is unavailable.
+ */
+function assertNodeRuntime(): void {
+  if (typeof globalThis.Buffer === 'undefined') {
+    throw new Error(
+      'encryption.ts requires a Node.js runtime. ' +
+        'Encryption via the Node `crypto` module is not available in ' +
+        'the Edge Runtime. Use this module only from Node.js serverless ' +
+        'functions or API routes. For Edge, implement AES-256-GCM using ' +
+        'the Web Crypto API (globalThis.crypto.subtle).',
+    );
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Key retrieval
@@ -66,13 +94,14 @@ function getKey(): Buffer {
  * @throws if plaintext is empty or key is not configured
  */
 export function encrypt(plaintext: string): string {
+  assertNodeRuntime();
   if (!plaintext) {
     throw new Error('Cannot encrypt empty string');
   }
 
   const key = getKey();
-  const iv = crypto.randomBytes(IV_LENGTH);
-  const cipher = crypto.createCipheriv(ALGORITHM, key, iv, {
+  const iv = nodeCrypto.randomBytes(IV_LENGTH);
+  const cipher = nodeCrypto.createCipheriv(ALGORITHM, key, iv, {
     authTagLength: AUTH_TAG_LENGTH,
   });
 
@@ -93,6 +122,7 @@ export function encrypt(plaintext: string): string {
  * @throws if the payload is tampered, malformed, or key is invalid
  */
 export function decrypt(encrypted: string): string {
+  assertNodeRuntime();
   if (!encrypted) {
     throw new Error('Cannot decrypt empty string');
   }
@@ -113,7 +143,7 @@ export function decrypt(encrypted: string): string {
   const key = getKey();
   const iv = Buffer.from(ivB64, OUTPUT_ENCODING);
   const authTag = Buffer.from(authTagB64, OUTPUT_ENCODING);
-  const decipher = crypto.createDecipheriv(ALGORITHM, key, iv, {
+  const decipher = nodeCrypto.createDecipheriv(ALGORITHM, key, iv, {
     authTagLength: AUTH_TAG_LENGTH,
   });
 

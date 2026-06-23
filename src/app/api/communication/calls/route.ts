@@ -148,7 +148,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 
     // ── Fetch call history from DB ─────────────────────────────────────────
     const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY;
+    const supabaseKey = process.env.SUPABASE_ANON_KEY;
 
     if (!supabaseUrl || !supabaseKey) {
       return NextResponse.json(
@@ -272,7 +272,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // ── Get the voice provider for this tenant ─────────────────────────────
     // Fetch tenant feature flags (in a real setup, this would be cached)
     const supabaseUrl = process.env.SUPABASE_URL;
-    const supabaseKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY;
+    const supabaseKey = process.env.SUPABASE_ANON_KEY;
     let featureFlags: Record<string, unknown> | undefined;
     let tenantRegion: string | undefined;
 
@@ -339,6 +339,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
       if (insertError) {
         logger.error({ error: insertError }, 'Failed to save call record');
+        return NextResponse.json(
+          { success: false, data: null, error: 'Call initiated but failed to save record', meta: null },
+          { status: 500 },
+        );
       }
     }
 

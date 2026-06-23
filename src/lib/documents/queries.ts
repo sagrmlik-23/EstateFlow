@@ -147,11 +147,11 @@ function getDb() {
   if (_supabase) return _supabase;
 
   const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY;
+  const key = process.env.SUPABASE_ANON_KEY;
 
   if (!url || !key) {
     throw new Error(
-      'Supabase not configured. Set SUPABASE_URL and SUPABASE_SERVICE_KEY (or SUPABASE_ANON_KEY).',
+      'Supabase not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY.',
     );
   }
 
@@ -296,6 +296,9 @@ export async function updateDocument(docId: string, data: UpdateDocumentInput): 
     .single();
 
   if (error) {
+    if (error.code === 'PGRST116') {
+      throw new Error(`Document not found: ${docId}`);
+    }
     console.error('[documents/queries] updateDocument error:', error);
     throw new Error(`Failed to update document: ${error.message}`);
   }

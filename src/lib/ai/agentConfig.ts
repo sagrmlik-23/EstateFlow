@@ -22,11 +22,11 @@ function getDb() {
   if (_supabase) return _supabase;
 
   const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY;
+  const key = process.env.SUPABASE_ANON_KEY;
 
   if (!url || !key) {
     throw new Error(
-      'Supabase not configured. Set SUPABASE_URL and SUPABASE_SERVICE_KEY (or SUPABASE_ANON_KEY).',
+      'Supabase not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY.',
     );
   }
 
@@ -65,13 +65,22 @@ function rowToAgent(row: AiAgentRow): ClientAIAgent {
   const scriptTemplates = row.script_templates;
   const behaviorConfig = row.behavior_config;
 
+  // Determine if the stored 'purpose' column holds a greeting or a category
+  const PURPOSE_VALUES = [
+    'lead_qualification', 'follow_up', 'survey', 'reminder',
+    'negotiation', 're_engagement', 'general',
+  ];
+  const storedPurpose = row.purpose || '';
+  const isCategory = PURPOSE_VALUES.includes(storedPurpose);
+
   return {
     id: row.id,
     tenantId: row.tenant_id,
     name: row.name,
     voice: row.voice || 'default',
     language: row.language || 'en',
-    greeting: row.purpose || '',
+    greeting: isCategory ? '' : storedPurpose,
+    purpose: isCategory ? storedPurpose : undefined,
     scriptTemplates: {
       firstContact: scriptTemplates?.firstContact || '',
       followUp: scriptTemplates?.followUp || '',

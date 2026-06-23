@@ -125,10 +125,15 @@ export default function CallTranscript({
         const sentiment = sentimentTags[index];
         const timestamp = 'timestamp' in entry ? (entry as any).timestamp : (entry as any).timestamps?.[0];
         const timestamps = 'timestamps' in entry ? (entry as any).timestamps : ((entry as any).timestamp !== undefined ? [(entry as any).timestamp] : []);
+        const entryKey = (() => {
+          const t = 'timestamp' in entry ? (entry as any).timestamp : (entry as any).timestamps?.[0];
+          const txt = ((entry as any).text || '').slice(0, 20);
+          return t != null ? `${entry.role}-${t}-${txt}` : `${entry.role}-${index}-${txt}`;
+        })();
 
         return (
           <div
-            key={index}
+            key={entryKey}
             className={cn(
               'flex',
               isAgent ? 'justify-start' : 'justify-end'

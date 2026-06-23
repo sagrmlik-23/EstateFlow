@@ -22,6 +22,10 @@ import type { UserRole } from '@/types/auth';
 // Zod schema for PATCH
 // ---------------------------------------------------------------------------
 
+const IdParamsSchema = z.object({
+  id: z.string().uuid('Invalid lead ID format'),
+});
+
 const ALLOWED_SOURCES = [
   'website', 'referral', 'whatsapp', 'facebook', 'instagram',
   'cold_call', 'walk_in', 'other',
@@ -29,7 +33,7 @@ const ALLOWED_SOURCES = [
 
 const ALLOWED_STATUSES = [
   'new', 'contacted', 'qualified', 'proposal', 'negotiation',
-  'won', 'lost', 'archived',
+  'closed_won', 'closed_lost', 'archived',
 ] as const;
 
 const ALLOWED_PROPERTY_TYPES = [
@@ -68,6 +72,15 @@ export async function GET(
 ): Promise<NextResponse> {
   try {
     const { id } = await params;
+
+    // ── Validate param ─────────────────────────────────────────────────────
+    const paramResult = IdParamsSchema.safeParse({ id });
+    if (!paramResult.success) {
+      return NextResponse.json(
+        { success: false, data: null, error: 'Invalid lead ID', meta: null },
+        { status: 400 },
+      );
+    }
 
     // ── Auth headers ───────────────────────────────────────────────────────
     const userId = request.headers.get('x-user-id');
@@ -119,7 +132,7 @@ export async function GET(
       },
       {
         status: 200,
-        headers: { ...rateHeaders, 'X-Request-Id': requestId },
+        headers: { ...rateHeaders, 'Cache-Control': 'private, no-store', 'X-Request-Id': requestId },
       },
     );
   } catch (error) {
@@ -147,6 +160,15 @@ export async function PATCH(
 ): Promise<NextResponse> {
   try {
     const { id } = await params;
+
+    // ── Validate param ─────────────────────────────────────────────────────
+    const paramResult = IdParamsSchema.safeParse({ id });
+    if (!paramResult.success) {
+      return NextResponse.json(
+        { success: false, data: null, error: 'Invalid lead ID', meta: null },
+        { status: 400 },
+      );
+    }
 
     // ── Auth headers ───────────────────────────────────────────────────────
     const userId = request.headers.get('x-user-id');
@@ -215,12 +237,23 @@ export async function PATCH(
     }
 
     // ── Execute update ─────────────────────────────────────────────────────
-    const updatedLead = await withTenantContext(
-      tenantId,
-      userId,
-      userRole || 'agent',
-      () => updateLead(id, parsed.data),
-    );
+    let updatedLead;
+    try {
+      updatedLead = await withTenantContext(
+        tenantId,
+        userId,
+        userRole || 'agent',
+        () => updateLead(id, parsed.data, oldLead.updated_at),
+      );
+    } catch (updateErr: any) {
+      if (updateErr?.message?.includes('not found or conflict')) {
+        return NextResponse.json(
+          { success: false, data: null, error: 'Conflict — resource was modified by another request. Please reload and try again.', meta: null },
+          { status: 409 },
+        );
+      }
+      throw updateErr;
+    }
 
     // ── Audit log ──────────────────────────────────────────────────────────
     const changedFields: Record<string, unknown> = {};
@@ -248,7 +281,7 @@ export async function PATCH(
       },
       {
         status: 200,
-        headers: { ...rateHeaders, 'X-Request-Id': requestId },
+        headers: { ...rateHeaders, 'Cache-Control': 'private, no-store', 'X-Request-Id': requestId },
       },
     );
   } catch (error) {
@@ -276,6 +309,15 @@ export async function DELETE(
 ): Promise<NextResponse> {
   try {
     const { id } = await params;
+
+    // ── Validate param ─────────────────────────────────────────────────────
+    const paramResult = IdParamsSchema.safeParse({ id });
+    if (!paramResult.success) {
+      return NextResponse.json(
+        { success: false, data: null, error: 'Invalid lead ID', meta: null },
+        { status: 400 },
+      );
+    }
 
     // ── Auth headers ───────────────────────────────────────────────────────
     const userId = request.headers.get('x-user-id');
@@ -345,7 +387,7 @@ export async function DELETE(
       },
       {
         status: 200,
-        headers: { ...rateHeaders, 'X-Request-Id': requestId },
+        headers: { ...rateHeaders, 'Cache-Control': 'private, no-store', 'X-Request-Id': requestId },
       },
     );
   } catch (error) {

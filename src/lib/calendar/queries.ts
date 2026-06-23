@@ -69,11 +69,11 @@ function getDb() {
   if (_supabase) return _supabase;
 
   const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY;
+  const key = process.env.SUPABASE_ANON_KEY;
 
   if (!url || !key) {
     throw new Error(
-      'Supabase not configured. Set SUPABASE_URL and SUPABASE_SERVICE_KEY (or SUPABASE_ANON_KEY).',
+      'Supabase not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY.',
     );
   }
 
@@ -230,6 +230,9 @@ export async function updateSiteVisit(
     .single();
 
   if (error) {
+    if (error.code === 'PGRST116') {
+      throw new Error(`Site visit not found: ${visitId}`);
+    }
     console.error('[calendar/queries] updateSiteVisit error:', error);
     throw new Error(`Failed to update site visit: ${error.message}`);
   }
@@ -243,6 +246,7 @@ export async function updateSiteVisit(
 
 export async function getAgentSchedule(
   agentId: string,
+  tenantId: string,
   date: string, // ISO date YYYY-MM-DD
 ): Promise<SiteVisitWithDetails[]> {
   const supabase = getDb();
@@ -252,6 +256,7 @@ export async function getAgentSchedule(
 
   const { data, error } = await (supabase.from('site_visits') as any)
     .select('*, leads!left(full_name, phone), properties!left(title, location)')
+    .eq('tenant_id', tenantId)
     .eq('scheduled_by', agentId)
     .gte('scheduled_at', dateFrom)
     .lte('scheduled_at', dateTo)
@@ -292,9 +297,10 @@ export async function getAgentSchedule(
 
 export async function getTodayVisits(
   agentId: string,
+  tenantId: string,
 ): Promise<SiteVisitWithDetails[]> {
   const today = new Date().toISOString().split('T')[0]!;
-  return getAgentSchedule(agentId, today);
+  return getAgentSchedule(agentId, tenantId, today);
 }
 
 // ---------------------------------------------------------------------------
@@ -303,12 +309,14 @@ export async function getTodayVisits(
 
 export async function getVisitById(
   visitId: string,
+  tenantId: string,
 ): Promise<SiteVisitWithDetails | null> {
   const supabase = getDb();
 
   const { data, error } = await (supabase.from('site_visits') as any)
     .select('*, leads!left(full_name, phone), properties!left(title, location), users!site_visits_scheduled_by_fkey!left(full_name)')
     .eq('id', visitId)
+    .eq('tenant_id', tenantId)
     .single();
 
   if (error) {

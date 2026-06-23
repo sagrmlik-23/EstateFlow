@@ -120,7 +120,7 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(result, { status: 200, headers: rlHeaders });
+    return NextResponse.json(result, { status: 200, headers: { ...rlHeaders, 'Cache-Control': 'private, no-store' } });
   } catch (error) {
     console.error('[properties/[id]] GET error:', error);
     return NextResponse.json(
@@ -226,11 +226,19 @@ export async function PATCH(
       auth.tenantId,
       auth.userId,
       auth.role,
-      () => updateProperty(id, parsed.data),
+      () => updateProperty(id, parsed.data, oldProperty.data?.updated_at),
     );
 
     if (!result.success) {
       return NextResponse.json(result, { status: 500, headers: rlHeaders });
+    }
+
+    // Optimistic concurrency conflict: no row matched (updated_at changed)
+    if (!result.data) {
+      return NextResponse.json(
+        { success: false, error: 'Conflict — resource was modified by another request. Please reload and try again.' },
+        { status: 409, headers: rlHeaders },
+      );
     }
 
     // ── Audit log ──────────────────────────────────────────────────────────
@@ -254,7 +262,7 @@ export async function PATCH(
       },
     );
 
-    return NextResponse.json(result, { status: 200, headers: rlHeaders });
+    return NextResponse.json(result, { status: 200, headers: { ...rlHeaders, 'Cache-Control': 'private, no-store' } });
   } catch (error) {
     console.error('[properties/[id]] PATCH error:', error);
     return NextResponse.json(
@@ -346,7 +354,7 @@ export async function DELETE(
       },
     );
 
-    return NextResponse.json(result, { status: 200, headers: rlHeaders });
+    return NextResponse.json(result, { status: 200, headers: { ...rlHeaders, 'Cache-Control': 'private, no-store' } });
   } catch (error) {
     console.error('[properties/[id]] DELETE error:', error);
     return NextResponse.json(

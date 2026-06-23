@@ -11,8 +11,8 @@ import type { NextRequest } from 'next/server';
 
 /**
  * Extract the client IP address from a request, checking
- * common proxy headers first, then falling back to the
- * direct connection IP.
+ * common proxy headers first, then falling back to a
+ * unique per-request identifier to avoid a shared rate-limit bucket.
  */
 export function extractClientIp(request: NextRequest): string {
   const forwarded = request.headers.get('x-forwarded-for');
@@ -24,6 +24,13 @@ export function extractClientIp(request: NextRequest): string {
   const realIp = request.headers.get('x-real-ip');
   if (realIp) return realIp;
 
-  // Fallback
-  return '127.0.0.1';
+  // Fallback: generate a unique per-request identifier instead of
+  // hardcoding 127.0.0.1, which would cause all requests without
+  // forwarded headers to share a single rate-limit bucket.
+  // The x-request-id header (if set by a proxy) provides a stable
+  // identifier; otherwise, fall back to a random UUID.
+  const requestId = request.headers.get('x-request-id');
+  if (requestId) return `request:${requestId}`;
+
+  return `anon:${crypto.randomUUID()}`;
 }

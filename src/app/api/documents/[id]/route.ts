@@ -22,6 +22,10 @@ import type { UserRole } from '@/types/auth';
 // Zod schemas
 // ---------------------------------------------------------------------------
 
+const IdParamsSchema = z.object({
+  id: z.string().uuid('Invalid document ID format'),
+});
+
 const ALLOWED_CATEGORIES = [
   'contract', 'agreement', 'id_proof', 'property_doc', 'other',
 ] as const;
@@ -46,6 +50,15 @@ export async function GET(
 ): Promise<NextResponse> {
   try {
     const { id } = await params;
+
+    // ── Validate param ─────────────────────────────────────────────────────
+    const paramResult = IdParamsSchema.safeParse({ id });
+    if (!paramResult.success) {
+      return NextResponse.json(
+        { success: false, data: null, error: 'Invalid document ID', meta: null },
+        { status: 400 },
+      );
+    }
 
     const userId = request.headers.get('x-user-id');
     const tenantId = request.headers.get('x-tenant-id');
@@ -94,7 +107,7 @@ export async function GET(
       },
       {
         status: 200,
-        headers: { ...rateHeaders, 'X-Request-Id': requestId },
+        headers: { ...rateHeaders, 'Cache-Control': 'private, no-store', 'X-Request-Id': requestId },
       },
     );
   } catch (error) {
@@ -116,6 +129,15 @@ export async function PATCH(
 ): Promise<NextResponse> {
   try {
     const { id } = await params;
+
+    // ── Validate param ─────────────────────────────────────────────────────
+    const paramResult = IdParamsSchema.safeParse({ id });
+    if (!paramResult.success) {
+      return NextResponse.json(
+        { success: false, data: null, error: 'Invalid document ID', meta: null },
+        { status: 400 },
+      );
+    }
 
     const userId = request.headers.get('x-user-id');
     const tenantId = request.headers.get('x-tenant-id');
@@ -219,7 +241,7 @@ export async function PATCH(
       },
       {
         status: 200,
-        headers: { ...rateHeaders, 'X-Request-Id': requestId },
+        headers: { ...rateHeaders, 'Cache-Control': 'private, no-store', 'X-Request-Id': requestId },
       },
     );
   } catch (error) {
@@ -241,6 +263,15 @@ export async function DELETE(
 ): Promise<NextResponse> {
   try {
     const { id } = await params;
+
+    // ── Validate param ─────────────────────────────────────────────────────
+    const paramResult = IdParamsSchema.safeParse({ id });
+    if (!paramResult.success) {
+      return NextResponse.json(
+        { success: false, data: null, error: 'Invalid document ID', meta: null },
+        { status: 400 },
+      );
+    }
 
     const userId = request.headers.get('x-user-id');
     const tenantId = request.headers.get('x-tenant-id');
@@ -305,7 +336,7 @@ export async function DELETE(
       },
       {
         status: 200,
-        headers: { ...rateHeaders, 'X-Request-Id': requestId },
+        headers: { ...rateHeaders, 'Cache-Control': 'private, no-store', 'X-Request-Id': requestId },
       },
     );
   } catch (error) {

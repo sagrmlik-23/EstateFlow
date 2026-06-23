@@ -111,7 +111,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
       },
       {
         status: 200,
-        headers: { ...rateHeaders, 'X-Request-Id': requestId },
+        headers: { ...rateHeaders, 'Cache-Control': 'private, no-store', 'X-Request-Id': requestId },
       },
     );
   } catch (error) {
@@ -201,7 +201,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       },
       {
         status: 201,
-        headers: { ...rateHeaders, 'X-Request-Id': requestId },
+        headers: { ...rateHeaders, 'Cache-Control': 'private, no-store', 'X-Request-Id': requestId },
       },
     );
   } catch (error) {

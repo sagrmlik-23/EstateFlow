@@ -113,7 +113,7 @@ export async function GET(
 
     return NextResponse.json(
       { success: true, data: result, error: null },
-      { status: 200, headers: rlHeaders },
+      { status: 200, headers: { ...rlHeaders, 'Cache-Control': 'private, no-store' } },
     );
   } catch (error) {
     console.error('[api/deals/[id]] GET error:', error);
@@ -197,19 +197,29 @@ export async function PATCH(
       }
 
       // ── Execute stage update ──────────────────────────────────────────────
-      const result = await withTenantContext(
-        auth.tenantId, auth.userId, auth.role,
-        () => updateDealStage(id, parsed.data.stage),
-      );
+      try {
+        const result = await withTenantContext(
+          auth.tenantId, auth.userId, auth.role,
+          () => updateDealStage(id, parsed.data.stage, oldDeal.updated_at),
+        );
 
-      await logUpdate(
-        'deal', id,
-        { stage: oldDeal.stage, closed_at: oldDeal.closed_at },
-        { stage: parsed.data.stage },
-        { ipAddress: request.headers.get('x-forwarded-for') ?? null, userAgent: request.headers.get('user-agent') ?? null, requestId: request.headers.get('x-session-id') ?? null },
-      );
+        await logUpdate(
+          'deal', id,
+          { stage: oldDeal.stage, closed_at: oldDeal.closed_at },
+          { stage: parsed.data.stage },
+          { ipAddress: request.headers.get('x-forwarded-for') ?? null, userAgent: request.headers.get('user-agent') ?? null, requestId: request.headers.get('x-session-id') ?? null },
+        );
 
-      return NextResponse.json({ success: true, data: result, error: null }, { status: 200, headers: rlHeaders });
+        return NextResponse.json({ success: true, data: result, error: null }, { status: 200, headers: rlHeaders });
+      } catch (updateErr: any) {
+        if (updateErr?.message?.includes('not found or conflict')) {
+          return NextResponse.json(
+            { success: false, error: 'Conflict — resource was modified by another request. Please reload and try again.' },
+            { status: 409, headers: rlHeaders },
+          );
+        }
+        throw updateErr;
+      }
     }
 
     // Full update
@@ -239,26 +249,36 @@ export async function PATCH(
 
     // ── Execute update ─────────────────────────────────────────────────────
     let result;
-    if (parsed.data.stage) {
-      // Use stage-specific update if stage is being changed
-      result = await withTenantContext(
-        auth.tenantId, auth.userId, auth.role,
-        () => updateDealStage(id, parsed.data.stage!),
-      );
-      // Apply remaining fields
-      const rest: Record<string, unknown> = { ...parsed.data };
-      delete rest.stage;
-      if (Object.keys(rest).length > 0) {
+    try {
+      if (parsed.data.stage) {
+        // Use stage-specific update if stage is being changed
         result = await withTenantContext(
           auth.tenantId, auth.userId, auth.role,
-          () => updateDeal(id, rest),
+          () => updateDealStage(id, parsed.data.stage!, oldDeal.updated_at),
+        );
+        // Apply remaining fields
+        const rest: Record<string, unknown> = { ...parsed.data };
+        delete rest.stage;
+        if (Object.keys(rest).length > 0) {
+          result = await withTenantContext(
+            auth.tenantId, auth.userId, auth.role,
+            () => updateDeal(id, rest, oldDeal.updated_at),
+          );
+        }
+      } else {
+        result = await withTenantContext(
+          auth.tenantId, auth.userId, auth.role,
+          () => updateDeal(id, parsed.data, oldDeal.updated_at),
         );
       }
-    } else {
-      result = await withTenantContext(
-        auth.tenantId, auth.userId, auth.role,
-        () => updateDeal(id, parsed.data),
-      );
+    } catch (updateErr: any) {
+      if (updateErr?.message?.includes('not found or conflict')) {
+        return NextResponse.json(
+          { success: false, error: 'Conflict — resource was modified by another request. Please reload and try again.' },
+          { status: 409, headers: rlHeaders },
+        );
+      }
+      throw updateErr;
     }
 
     // ── Audit log ──────────────────────────────────────────────────────────

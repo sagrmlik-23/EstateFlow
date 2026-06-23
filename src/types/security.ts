@@ -24,6 +24,8 @@ export interface AuditLogParams {
 }
 
 export interface AuditLogOptions {
+  tenantId?: string | null;
+  userId?: string | null;
   ipAddress?: string | null;
   userAgent?: string | null;
   requestId?: string | null;

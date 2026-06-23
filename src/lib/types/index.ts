@@ -7,13 +7,9 @@
 // Enums
 // ---------------------------------------------------------------------------
 
-export enum UserRole {
-  SuperAdmin = 'super_admin',
-  OrgAdmin = 'org_admin',
-  Agent = 'agent',
-  TeamLead = 'team_lead',
-  Viewer = 'viewer',
-}
+// UserRole is consolidated to a single source of truth: @/types/auth
+import type { UserRole } from '@/types/auth';
+export type { UserRole };
 
 export enum LeadStatus {
   New = 'new',

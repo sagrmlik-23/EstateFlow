@@ -83,6 +83,8 @@ export default function ChatWidget({
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const widgetRef = useRef<HTMLDivElement>(null);
+  const isLoadingRef = useRef(isLoading);
+  isLoadingRef.current = isLoading;
 
   // -----------------------------------------------------------------------
   // Initialize: send welcome message
@@ -91,7 +93,7 @@ export default function ChatWidget({
   useEffect(() => {
     if (!isInitialized) {
       const welcomeMsg: WidgetChatMessage = {
-        id: `welcome-${Date.now()}`,
+        id: `welcome-${crypto.randomUUID()}`,
         sessionId: '',
         role: 'bot',
         content: welcomeMessage,
@@ -168,7 +170,7 @@ export default function ChatWidget({
 
   const sendMessage = useCallback(
     async (text: string) => {
-      if (!text.trim() || isLoading) return;
+      if (!text.trim() || isLoadingRef.current) return;
 
       const trimmed = text.trim();
       setInput('');
@@ -177,7 +179,7 @@ export default function ChatWidget({
 
       // Add user message
       const userMsg: WidgetChatMessage = {
-        id: `user-${Date.now()}`,
+        id: `user-${crypto.randomUUID()}`,
         sessionId: sessionId ?? '',
         role: 'user',
         content: trimmed,
@@ -219,7 +221,7 @@ export default function ChatWidget({
 
         // Add bot response
         const botMsg: WidgetChatMessage = {
-          id: `bot-${Date.now()}`,
+          id: `bot-${crypto.randomUUID()}`,
           sessionId: data.sessionId,
           role: 'bot',
           content: data.response.message,
@@ -251,7 +253,7 @@ export default function ChatWidget({
         setIsLoading(false);
       }
     },
-    [sessionId, tenantId, isLoading, baseUrl, playNotificationSound],
+    [sessionId, tenantId, baseUrl, playNotificationSound],
   );
 
   // -----------------------------------------------------------------------

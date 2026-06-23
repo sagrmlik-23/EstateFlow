@@ -6,10 +6,9 @@
  *   - Specialization (agent's property type expertise)
  *   - Availability (online/offline status)
  *   - Round-robin rotation
- *
- * All functions stubbed — replace DB calls when client is wired.
  */
 
+import { createClient } from '@supabase/supabase-js';
 import type { UserRole } from '@/types/auth';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
@@ -61,6 +60,23 @@ export interface AssignmentResult {
   agentName: string | null;
   strategy: string;
   reason: string;
+}
+
+// ─── Supabase client helper ──────────────────────────────────────────────────
+
+let _supabase: ReturnType<typeof createClient> | null = null;
+
+function getDb() {
+  if (_supabase) return _supabase;
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_ANON_KEY;
+  if (!url || !key) {
+    throw new Error('Supabase not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY.');
+  }
+  _supabase = createClient(url, key, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  return _supabase;
 }
 
 // ─── Stub agent store ───────────────────────────────────────────────────────
@@ -153,7 +169,7 @@ export async function getAvailableAgents(
 
     // If workload is equal, prefer specialization match
     if (leadType && b.specializations.includes(leadType) !== a.specializations.includes(leadType)) {
-      return b.specializations.includes(leadType) ? 1 : -1;
+      return b.specializations.includes(leadType) ? -1 : 1;
     }
 
     return 0;
@@ -197,7 +213,7 @@ async function assignBySpecialization(
 }
 
 /**
- * Find the best agent using round-robin rotation.
+ * Find the best agent using least-recently-assigned rotation.
  */
 async function assignByRoundRobin(
   tenantId: string,
@@ -274,11 +290,15 @@ export async function assignLeadToAgent(
     }
 
     // Update the lead's assigned_to in the database
-    // In production:
-    //   await supabase
-    //     .from('leads')
-    //     .update({ assigned_to: agent.agentId, updated_at: new Date().toISOString() })
-    //     .eq('id', leadId);
+    const { error: updateError } = await (getDb()
+      .from('leads') as any)
+      .update({ assigned_to: agent.agentId, updated_at: new Date().toISOString() })
+      .eq('id', leadId);
+
+    if (updateError) {
+      console.error('[smartAssignment] DB update error:', updateError);
+      // Continue with in-memory update even if DB write fails
+    }
 
     // Update the agent's last assignment timestamp
     const stored = agentAssignmentStore.findIndex(

@@ -3,20 +3,24 @@
  *
  * Uses HS256 with a secret stored in JWT_SECRET env var.
  * Tokens expire after 15 minutes.
+ *
+ * Uses the 'jose' library (Edge-compatible, no Node crypto dependency).
  */
 
-import * as jwt from 'jsonwebtoken';
+import { SignJWT, jwtVerify } from 'jose';
+import { randomUUID } from 'crypto';
 import type { JwtPayload as JwtPayloadType, UserRole } from '@/types/auth';
+import { isTokenRevoked } from './tokenBlacklist';
 
-const DEFAULT_EXPIRY = 15 * 60; // 15 minutes in seconds
-const REFRESH_EXPIRY_GRACE = 60; // 1 minute grace window for refresh
+const DEFAULT_EXPIRY = '15m';
+const REFRESH_EXPIRY_GRACE = 60; // 1 minute grace window for refresh (seconds)
 
-function getSecret(): string {
+function getSecret(): Uint8Array {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
     throw new Error('JWT_SECRET environment variable is not set');
   }
-  return secret;
+  return new TextEncoder().encode(secret);
 }
 
 /**
@@ -27,22 +31,18 @@ function getSecret(): string {
  * @param tenantId - Tenant UUID the user belongs to
  * @returns Signed JWT string
  */
-export function generateToken(
+export async function generateToken(
   userId: string,
   role: UserRole,
   tenantId: string,
-): string {
+): Promise<string> {
   const secret = getSecret();
-  const payload: Omit<JwtPayloadType, 'exp' | 'iat'> = {
-    userId,
-    role,
-    tenantId,
-  };
 
-  return jwt.sign(payload, secret, {
-    expiresIn: DEFAULT_EXPIRY,
-    algorithm: 'HS256',
-  });
+  return new SignJWT({ userId, role, tenantId, jti: randomUUID() })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setExpirationTime(DEFAULT_EXPIRY)
+    .setIssuedAt()
+    .sign(secret);
 }
 
 /**
@@ -51,19 +51,25 @@ export function generateToken(
  * @param token - JWT string to verify
  * @returns Decoded JwtPayload if valid, null otherwise
  */
-export function verifyToken(token: string): JwtPayloadType | null {
+export async function verifyToken(token: string): Promise<JwtPayloadType | null> {
   try {
     const secret = getSecret();
-    const decoded = jwt.verify(token, secret, {
+    const { payload } = await jwtVerify(token, secret, {
       algorithms: ['HS256'],
-    }) as jwt.JwtPayload & JwtPayloadType;
+    });
+
+    const jti = payload.jti as string | undefined;
+    if (jti && isTokenRevoked(jti)) {
+      return null; // Token has been revoked
+    }
 
     return {
-      userId: decoded.userId as string,
-      role: decoded.role as UserRole,
-      tenantId: decoded.tenantId as string,
-      iat: decoded.iat as number,
-      exp: decoded.exp as number,
+      userId: payload.userId as string,
+      role: payload.role as UserRole,
+      tenantId: payload.tenantId as string,
+      jti: (payload.jti as string) || '',
+      iat: payload.iat as number,
+      exp: payload.exp as number,
     };
   } catch {
     return null;
@@ -79,39 +85,30 @@ export function verifyToken(token: string): JwtPayloadType | null {
  * @param oldToken - The existing (possibly expired) JWT
  * @returns A new signed JWT string, or null if refresh is not allowed
  */
-export function refreshToken(oldToken: string): string | null {
+export async function refreshToken(oldToken: string): Promise<string | null> {
   // First try verifying with the normal check (still valid)
-  const valid = verifyToken(oldToken);
+  const valid = await verifyToken(oldToken);
   if (valid) {
     return generateToken(valid.userId, valid.role, valid.tenantId);
   }
 
-  // If expired, try decoding without verification to check the grace window
+  // If expired, try verifying with clock tolerance to check the grace window
   try {
-    const decoded = jwt.decode(oldToken) as jwt.JwtPayload & JwtPayloadType;
-    if (!decoded || !decoded.exp || !decoded.userId || !decoded.role || !decoded.tenantId) {
+    const secret = getSecret();
+    const { payload } = await jwtVerify(oldToken, secret, {
+      algorithms: ['HS256'],
+      clockTolerance: REFRESH_EXPIRY_GRACE,
+    });
+
+    if (!payload.userId || !payload.role || !payload.tenantId) {
       return null;
     }
 
-    const now = Math.floor(Date.now() / 1000);
-    const expiryGraceEnd = decoded.exp + REFRESH_EXPIRY_GRACE;
-
-    if (now > expiryGraceEnd) {
-      return null; // Token expired too long ago
-    }
-
-    // Verify the signature still checks out
-    const secret = getSecret();
-    try {
-      jwt.verify(oldToken, secret, {
-        algorithms: ['HS256'],
-        ignoreExpiration: true,
-      });
-    } catch {
-      return null; // Invalid signature
-    }
-
-    return generateToken(decoded.userId, decoded.role, decoded.tenantId);
+    return generateToken(
+      payload.userId as string,
+      payload.role as UserRole,
+      payload.tenantId as string,
+    );
   } catch {
     return null;
   }

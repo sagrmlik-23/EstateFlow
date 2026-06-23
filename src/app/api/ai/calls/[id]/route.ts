@@ -6,19 +6,10 @@
 // ============================================================================
 
 import { NextResponse, type NextRequest } from 'next/server';
-import { z } from 'zod';
 import { getCallById } from '@/lib/ai/callQueue';
 import { AIVoiceOrchestrator } from '@/lib/ai/orchestrator';
 import { withRateLimit, extractClientIp } from '@/lib/security/rateLimiter';
 import { logCreate } from '@/lib/security/auditLogger';
-
-// ---------------------------------------------------------------------------
-// Zod schemas
-// ---------------------------------------------------------------------------
-
-const triggerCallSchema = z.object({
-  lead_id: z.string().uuid('lead_id must be a valid UUID'),
-});
 
 // ---------------------------------------------------------------------------
 // Route params interface
@@ -126,7 +117,7 @@ export async function GET(
  */
 export async function POST(
   request: NextRequest,
-  _params: RouteParams,
+  { params }: RouteParams,
 ): Promise<NextResponse> {
   try {
     // ── Auth headers ───────────────────────────────────────────────────────
@@ -156,23 +147,9 @@ export async function POST(
       );
     }
 
-    // ── Parse & validate body ──────────────────────────────────────────────
-    const body = await request.json();
-    const parsed = triggerCallSchema.safeParse(body);
-
-    if (!parsed.success) {
-      return NextResponse.json(
-        {
-          success: false,
-          data: null,
-          error: parsed.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join('; '),
-          meta: null,
-        },
-        { status: 400 },
-      );
-    }
-
-    const { lead_id } = parsed.data;
+    // ── Resolve URL param as lead_id ───────────────────────────────────────
+    const { id } = await params;
+    const lead_id = id;
 
     // ── Trigger AI call via orchestrator ───────────────────────────────────
     const orchestrator = new AIVoiceOrchestrator();

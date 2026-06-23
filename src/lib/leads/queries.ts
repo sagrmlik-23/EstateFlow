@@ -13,6 +13,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { encryptPhone, decryptPhone } from '@/lib/security/encryption';
+import { normalizePhone } from '@/lib/leads/intakeWebhook';
 import type { PaginationParams, PaginationMeta } from '@/lib/types';
 
 // ---------------------------------------------------------------------------
@@ -114,11 +115,11 @@ function getDb() {
   if (_supabase) return _supabase;
 
   const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY;
+  const key = process.env.SUPABASE_ANON_KEY;
 
   if (!url || !key) {
     throw new Error(
-      'Supabase not configured. Set SUPABASE_URL and SUPABASE_SERVICE_KEY (or SUPABASE_ANON_KEY).',
+      'Supabase not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY.',
     );
   }
 
@@ -271,35 +272,70 @@ export async function createLead(
     }
   }
 
-  const insertData: Record<string, any> = {
-    tenant_id: tenantId,
-    full_name: data.full_name,
-    phone: encryptedPhone,
-    email: data.email ?? null,
-    source: data.source ?? null,
-    status: data.status ?? 'new',
-    ai_score: data.ai_score ?? 0,
-    budget_min: data.budget_min ?? null,
-    budget_max: data.budget_max ?? null,
-    preferred_location: data.preferred_location ?? null,
-    property_type: data.property_type ?? null,
-    notes: data.notes ?? null,
-    assigned_agent_id: data.assigned_agent_id ?? null,
-    is_duplicate: isDuplicate,
-    created_by: createdByUserId,
-  };
+  // Use transactional RPC — duplicate check (done above) + insert via PG function
+  // to ensure atomicity of the insert in case of concurrent calls.
+  try {
+    const { data: result, error } = await (supabase as any).rpc('create_lead_transactional', {
+      p_tenant_id: tenantId,
+      p_created_by: createdByUserId,
+      p_full_name: data.full_name,
+      p_phone: encryptedPhone,
+      p_email: data.email ?? null,
+      p_source: data.source ?? null,
+      p_status: data.status ?? 'new',
+      p_ai_score: data.ai_score ?? 0,
+      p_budget_min: data.budget_min ?? null,
+      p_budget_max: data.budget_max ?? null,
+      p_preferred_location: data.preferred_location ?? null,
+      p_property_type: data.property_type ?? null,
+      p_notes: data.notes ?? null,
+      p_assigned_agent_id: data.assigned_agent_id ?? null,
+      p_is_duplicate: isDuplicate,
+    } as any);
 
-  const { data: result, error } = await (supabase.from('leads') as any)
-    .insert(insertData)
-    .select()
-    .single();
+    if (error) {
+      console.error('[leads/queries] createLead (rpc) error:', error);
+      throw new Error(`Failed to create lead: ${error.message}`);
+    }
 
-  if (error) {
-    console.error('[leads/queries] createLead error:', error);
-    throw new Error(`Failed to create lead: ${error.message}`);
+    return result as unknown as LeadRow;
+  } catch (rpcErr: any) {
+    // Fallback: if RPC function doesn't exist yet, use direct insert
+    if (rpcErr?.message?.includes('function') || rpcErr?.code === '42883') {
+      console.warn('[leads/queries] createLead: RPC function not found, falling back to direct insert');
+
+      const insertData: Record<string, any> = {
+        tenant_id: tenantId,
+        full_name: data.full_name,
+        phone: encryptedPhone,
+        email: data.email ?? null,
+        source: data.source ?? null,
+        status: data.status ?? 'new',
+        ai_score: data.ai_score ?? 0,
+        budget_min: data.budget_min ?? null,
+        budget_max: data.budget_max ?? null,
+        preferred_location: data.preferred_location ?? null,
+        property_type: data.property_type ?? null,
+        notes: data.notes ?? null,
+        assigned_agent_id: data.assigned_agent_id ?? null,
+        is_duplicate: isDuplicate,
+        created_by: createdByUserId,
+      };
+
+      const { data: result, error } = await (supabase.from('leads') as any)
+        .insert(insertData)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('[leads/queries] createLead error:', error);
+        throw new Error(`Failed to create lead: ${error.message}`);
+      }
+
+      return result as LeadRow;
+    }
+    throw rpcErr;
   }
-
-  return result as LeadRow;
 }
 
 // ---------------------------------------------------------------------------
@@ -309,6 +345,7 @@ export async function createLead(
 export async function updateLead(
   leadId: string,
   data: UpdateLeadInput,
+  expectedUpdatedAt?: string,
 ): Promise<LeadRow> {
   const supabase = getDb();
 
@@ -341,13 +378,20 @@ export async function updateLead(
 
   updateData.updated_at = new Date().toISOString();
 
-  const { data: result, error } = await (supabase.from('leads') as any)
+  let query = (supabase.from('leads') as any)
     .update(updateData)
-    .eq('id', leadId)
-    .select()
-    .single();
+    .eq('id', leadId);
+
+  if (expectedUpdatedAt) {
+    query = query.eq('updated_at', expectedUpdatedAt);
+  }
+
+  const { data: result, error } = await query.select().single();
 
   if (error) {
+    if (error.code === 'PGRST116') {
+      throw new Error(`Lead not found or conflict: ${leadId}`);
+    }
     console.error('[leads/queries] updateLead error:', error);
     throw new Error(`Failed to update lead: ${error.message}`);
   }
@@ -411,13 +455,14 @@ export async function bulkUpdateLeads(
 // 7. getLeadActivity — Timeline of calls, messages, site visits
 // ---------------------------------------------------------------------------
 
-export async function getLeadActivity(leadId: string): Promise<LeadActivityItem[]> {
+export async function getLeadActivity(leadId: string, tenantId: string): Promise<LeadActivityItem[]> {
   const supabase = getDb();
   const activities: LeadActivityItem[] = [];
 
-  // Fetch calls for this lead
+  // Fetch calls for this lead (tenant-scoped)
   const { data: calls, error: callsErr } = await (supabase.from('calls') as any)
     .select('id, status, direction, duration_seconds, notes, created_at')
+    .eq('tenant_id', tenantId)
     .eq('lead_id', leadId)
     .order('created_at', { ascending: false })
     .limit(50);
@@ -434,9 +479,10 @@ export async function getLeadActivity(leadId: string): Promise<LeadActivityItem[
     }
   }
 
-  // Fetch messages for this lead
+  // Fetch messages for this lead (tenant-scoped)
   const { data: msgs, error: msgsErr } = await (supabase.from('messages') as any)
     .select('id, channel, direction, content, created_at')
+    .eq('tenant_id', tenantId)
     .eq('lead_id', leadId)
     .order('created_at', { ascending: false })
     .limit(50);
@@ -453,9 +499,10 @@ export async function getLeadActivity(leadId: string): Promise<LeadActivityItem[
     }
   }
 
-  // Fetch site visits for this lead
+  // Fetch site visits for this lead (tenant-scoped)
   const { data: visits, error: visitsErr } = await (supabase.from('site_visits') as any)
     .select('id, status, scheduled_at, notes, created_at')
+    .eq('tenant_id', tenantId)
     .eq('lead_id', leadId)
     .order('created_at', { ascending: false })
     .limit(50);
@@ -539,12 +586,13 @@ async function findLeadsByPhone(
   // (random IV per encryption), we can't directly search encrypted values.
   //
   // Strategy: Fetch leads for tenant, decrypt phone in-app, and compare.
-  // For the MVP, we use a LIMIT 50 scan.
+  // Limit is configurable via DUPLICATE_CHECK_LIMIT env var (default 500).
+  const DUPLICATE_CHECK_LIMIT = parseInt(process.env.DUPLICATE_CHECK_LIMIT || '500', 10);
   const { data, error } = await (supabase.from('leads') as any)
     .select('id, full_name, phone, email, status, created_at')
     .eq('tenant_id', tenantId)
     .is('phone', 'neq', null)
-    .limit(50);
+    .limit(DUPLICATE_CHECK_LIMIT);
 
   if (error) {
     console.error('[leads/queries] findLeadsByPhone error:', error);
@@ -552,19 +600,21 @@ async function findLeadsByPhone(
   }
 
   const matches: LeadRow[] = [];
-  const normalizedSearch = phone.replace(/\D/g, '');
+  // Strip all non-digits from search phone for robust matching
+  const normalizedSearch = normalizePhone(phone).replace(/\D/g, '');
 
   for (const lead of (data || []) as LeadRow[]) {
     if (!lead.phone) continue;
     try {
       const decrypted = decryptPhone(lead.phone);
-      const normalizedLead = decrypted.replace(/\D/g, '');
+      // Strip '+' and non-digits from both sides for reliable matching
+      const normalizedLead = normalizePhone(decrypted).replace(/\D/g, '');
       if (normalizedLead === normalizedSearch) {
         matches.push(lead);
       }
     } catch {
       // If decryption fails, try direct comparison (dev mode with plaintext)
-      const normalizedLead = lead.phone.replace(/\D/g, '');
+      const normalizedLead = normalizePhone(lead.phone).replace(/\D/g, '');
       if (normalizedLead === normalizedSearch) {
         matches.push(lead);
       }

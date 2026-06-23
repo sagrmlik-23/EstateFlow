@@ -35,7 +35,7 @@ function getSupabase() {
   if (supabaseClient) return supabaseClient;
 
   const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY;
+  const key = process.env.SUPABASE_ANON_KEY;
 
   if (!url || !key) {
     logger.warn('Supabase not configured — audit logs will use pino fallback');
@@ -111,8 +111,10 @@ export async function auditLog(params: AuditLogParams): Promise<void> {
  */
 function buildOptions(
   options?: AuditLogOptions,
-): Pick<AuditLogParams, 'ipAddress' | 'userAgent' | 'requestId'> {
+): Pick<AuditLogParams, 'tenantId' | 'userId' | 'ipAddress' | 'userAgent' | 'requestId'> {
   return {
+    tenantId: options?.tenantId ?? null,
+    userId: options?.userId ?? null,
     ipAddress: options?.ipAddress ?? null,
     userAgent: options?.userAgent ?? null,
     requestId: options?.requestId ?? null,
@@ -142,8 +144,6 @@ export async function logCreate(
     oldValues: null,
     newValues,
     ...opts,
-    tenantId: null, // Will be set by middleware or caller
-    userId: null,
   });
 }
 
@@ -172,8 +172,6 @@ export async function logUpdate(
     oldValues,
     newValues,
     ...opts,
-    tenantId: null,
-    userId: null,
   });
 }
 
@@ -200,8 +198,6 @@ export async function logDelete(
     oldValues,
     newValues: null,
     ...opts,
-    tenantId: null,
-    userId: null,
   });
 }
 

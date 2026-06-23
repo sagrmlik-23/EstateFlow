@@ -171,7 +171,7 @@ export interface WidgetConfigResponse extends WidgetConfig {
 // SECTION 5 — WhatsApp Chatbot Session (AGENT-5-3-WHATSAPP-CHATBOT)
 // ============================================================================
 
-export type ChatbotSessionStatus = 'active' | 'idle' | 'handoff_requested' | 'handoff_assigned' | 'closed';
+export type ChatbotSessionStatus = ChatSessionStatus;
 
 export interface ChatbotSession {
   id: string;
@@ -308,7 +308,7 @@ export interface EngineChatMessage {
 
 export type ChatChannel = 'website' | 'whatsapp' | 'sms' | 'facebook' | 'instagram';
 
-export type ChatSessionStatus = 'active' | 'pending' | 'handoff_requested' | 'handoff_completed' | 'closed';
+export type ChatSessionStatus = 'active' | 'idle' | 'pending' | 'handoff_requested' | 'handoff_assigned' | 'handoff_completed' | 'closed';
 
 export interface ChatContext {
   budget?: {

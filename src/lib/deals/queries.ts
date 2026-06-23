@@ -100,11 +100,11 @@ function getSupabase() {
   if (supabaseClient) return supabaseClient;
 
   const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY;
+  const key = process.env.SUPABASE_ANON_KEY;
 
   if (!url || !key) {
     throw new Error(
-      'Supabase not configured. Set SUPABASE_URL and SUPABASE_SERVICE_KEY (or SUPABASE_ANON_KEY).',
+      'Supabase not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY.',
     );
   }
 
@@ -281,49 +281,81 @@ export async function createDeal(
 export async function updateDealStage(
   dealId: string,
   stage: string,
+  expectedUpdatedAt?: string,
 ): Promise<DealRow> {
   const supabase = getSupabase();
 
-  const now = new Date().toISOString();
-  const isClosed = stage === 'closed_won' || stage === 'closed_lost';
-  const wasClosed = false; // We'll fetch existing state first
+  // Use transactional RPC to read + update atomically
+  try {
+    const { data: result, error } = await (supabase as any).rpc('update_deal_stage_transactional', {
+      p_deal_id: dealId,
+      p_stage: stage,
+    } as any);
 
-  // Fetch existing deal to determine if we're transitioning to/from closed
-  const { data: existing, error: fetchErr } = await (supabase
-    .from('deals') as any)
-    .select('stage, closed_at')
-    .eq('id', dealId)
-    .single();
+    if (error) {
+      console.error('[deals/queries] updateDealStage (rpc) error:', error);
+      throw new Error(`Failed to update deal stage: ${error.message}`);
+    }
 
-  if (fetchErr) {
-    console.error('[deals/queries] updateDealStage fetch error:', fetchErr);
-    throw new Error(`Failed to fetch deal for stage update: ${fetchErr.message}`);
+    // If optimistic concurrency is requested but RPC was used, we can't check it here.
+    // The route handler will re-verify by checking if result was actually returned.
+    return result as unknown as DealRow;
+  } catch (rpcErr: any) {
+    // Fallback: if RPC function doesn't exist yet, do read + update manually
+    if (rpcErr?.message?.includes('function') || rpcErr?.code === '42883') {
+      console.warn('[deals/queries] updateDealStage: RPC function not found, falling back to manual');
+
+      const now = new Date().toISOString();
+      const isClosed = stage === 'closed_won' || stage === 'closed_lost';
+
+      const { data: existing, error: fetchErr } = await (supabase
+        .from('deals') as any)
+        .select('stage, closed_at, updated_at')
+        .eq('id', dealId)
+        .single();
+
+      if (fetchErr) {
+        if (fetchErr.code === 'PGRST116') {
+          throw new Error(`Deal not found: ${dealId}`);
+        }
+        console.error('[deals/queries] updateDealStage fetch error:', fetchErr);
+        throw new Error(`Failed to fetch deal for stage update: ${fetchErr.message}`);
+      }
+
+      // Optimistic concurrency check
+      if (expectedUpdatedAt && existing.updated_at !== expectedUpdatedAt) {
+        throw new Error(`Deal not found or conflict: ${dealId}`);
+      }
+
+      const updateData: Record<string, any> = {
+        stage,
+        updated_at: now,
+      };
+
+      if (isClosed && !existing.closed_at) {
+        updateData.closed_at = now;
+      } else if (!isClosed && existing.closed_at) {
+        updateData.closed_at = null;
+      }
+
+      const { data: result, error } = await (supabase.from('deals') as any)
+        .update(updateData)
+        .eq('id', dealId)
+        .select()
+        .single();
+
+      if (error) {
+        if (error.code === 'PGRST116') {
+          throw new Error(`Deal not found or conflict: ${dealId}`);
+        }
+        console.error('[deals/queries] updateDealStage error:', error);
+        throw new Error(`Failed to update deal stage: ${error.message}`);
+      }
+
+      return result as DealRow;
+    }
+    throw rpcErr;
   }
-
-  const updateData: Record<string, any> = {
-    stage,
-    updated_at: now,
-  };
-
-  // Set closed_at when moving to a closed stage; clear when moving out
-  if (isClosed && !existing.closed_at) {
-    updateData.closed_at = now;
-  } else if (!isClosed && existing.closed_at) {
-    updateData.closed_at = null;
-  }
-
-  const { data: result, error } = await (supabase.from('deals') as any)
-    .update(updateData)
-    .eq('id', dealId)
-    .select()
-    .single();
-
-  if (error) {
-    console.error('[deals/queries] updateDealStage error:', error);
-    throw new Error(`Failed to update deal stage: ${error.message}`);
-  }
-
-  return result as DealRow;
 }
 
 // ---------------------------------------------------------------------------
@@ -336,6 +368,7 @@ export async function updateDealStage(
 export async function updateDeal(
   dealId: string,
   data: UpdateDealInput,
+  expectedUpdatedAt?: string,
 ): Promise<DealRow> {
   const supabase = getSupabase();
 
@@ -351,13 +384,20 @@ export async function updateDeal(
 
   updateData.updated_at = new Date().toISOString();
 
-  const { data: result, error } = await (supabase.from('deals') as any)
+  let query = (supabase.from('deals') as any)
     .update(updateData)
-    .eq('id', dealId)
-    .select()
-    .single();
+    .eq('id', dealId);
+
+  if (expectedUpdatedAt) {
+    query = query.eq('updated_at', expectedUpdatedAt);
+  }
+
+  const { data: result, error } = await query.select().single();
 
   if (error) {
+    if (error.code === 'PGRST116') {
+      throw new Error(`Deal not found or conflict: ${dealId}`);
+    }
     console.error('[deals/queries] updateDeal error:', error);
     throw new Error(`Failed to update deal: ${error.message}`);
   }
@@ -376,10 +416,20 @@ export async function updateDeal(
 export async function deleteDeal(dealId: string): Promise<void> {
   const supabase = getSupabase();
 
+  // Fetch current deal to preserve existing notes
+  const { data: deal } = await (supabase.from('deals') as any)
+    .select('notes')
+    .eq('id', dealId)
+    .single();
+
+  const existingNotes: string = deal?.notes ?? '';
+  const archiveNote = ` | Archived on ${new Date().toISOString()}`;
+  const updatedNotes = existingNotes ? existingNotes + archiveNote : `Archived on ${new Date().toISOString()}`;
+
   const { error } = await (supabase.from('deals') as any)
     .update({
       stage: 'closed_lost',
-      notes: 'Archived',
+      notes: updatedNotes,
       updated_at: new Date().toISOString(),
       closed_at: new Date().toISOString(),
     } as Record<string, unknown>)

@@ -19,13 +19,8 @@ import { resolveTenantFromHost } from '@/lib/routing/tenantResolver';
 import type { TenantRoutingInfo } from '@/types/routing';
 import { getSecurityHeaders } from '@/lib/security/securityHeaders';
 import { extractClientIp } from '@/lib/security/ipUtils';
+import { generateCsrfCookie } from '@/lib/security/csrf';
 import { Redis } from '@upstash/redis';
-
-// ═══════════════════════════════════════════════════════════════════════════════
-// Edge Runtime
-// ═══════════════════════════════════════════════════════════════════════════════
-
-export const runtime = 'experimental-edge';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // Constants
@@ -46,6 +41,8 @@ const PUBLIC_ROUTES = new Set<string>([
   '/api/auth/login',
   '/api/auth/register',
   '/api/auth/refresh',
+  '/api/auth/logout',
+  '/api/auth/csrf',
   '/api/tenants',
   '/api/webhooks',
   '/_next/static',
@@ -169,7 +166,12 @@ async function handleTenantRouting(
 ): Promise<NextResponse | Response> {
   // Development mode — pass through without tenant resolution
   if (isLocalDevelopment(host)) {
-    const response = NextResponse.next();
+    const requestHeaders = new Headers(request.headers);
+    if (process.env.NODE_ENV === 'development') {
+      requestHeaders.set(ROUTING_HEADERS.TENANT_ID, '00000000-0000-0000-0000-000000000010');
+      requestHeaders.set(ROUTING_HEADERS.TENANT_SLUG, 'demo');
+    }
+    const response = NextResponse.next({ request: { headers: requestHeaders } });
     if (process.env.NODE_ENV === 'development') {
       response.headers.set(ROUTING_HEADERS.TENANT_ID, '00000000-0000-0000-0000-000000000010');
       response.headers.set(ROUTING_HEADERS.TENANT_SLUG, 'demo');
@@ -183,7 +185,12 @@ async function handleTenantRouting(
     return redirectToPlatform(request, UNMATCHED_DOMAIN_REDIRECT);
   }
 
-  const response = NextResponse.next();
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set(ROUTING_HEADERS.TENANT_ID, tenant.tenantId);
+  requestHeaders.set(ROUTING_HEADERS.TENANT_SLUG, tenant.slug);
+  requestHeaders.set(ROUTING_HEADERS.TENANT_DOMAIN, host);
+
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
   response.headers.set(ROUTING_HEADERS.TENANT_ID, tenant.tenantId);
   response.headers.set(ROUTING_HEADERS.TENANT_SLUG, tenant.slug);
   response.headers.set(ROUTING_HEADERS.TENANT_DOMAIN, host);
@@ -232,10 +239,10 @@ async function handleAuthPhase(
   return authenticateSync(request, response);
 }
 
-function authenticateSync(
+async function authenticateSync(
   request: NextRequest,
   response: NextResponse,
-): NextResponse | Response {
+): Promise<NextResponse | Response> {
   const authHeader = request.headers.get('authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return unauthorizedResponse();
@@ -246,12 +253,13 @@ function authenticateSync(
     return unauthorizedResponse();
   }
 
-  const payload = verifyToken(token);
+  const payload = await verifyToken(token);
   if (!payload) {
     return unauthorizedResponse();
   }
 
-  const routingTenantId = request.headers.get('x-tenant-id');
+  // Read tenant from response headers (set by routing phase)
+  const routingTenantId = response.headers.get('x-tenant-id');
   if (routingTenantId && routingTenantId !== payload.tenantId) {
     return unauthorizedResponse();
   }
@@ -262,6 +270,14 @@ function authenticateSync(
     response.headers.set(AUTH_HEADERS.TENANT_ID, payload.tenantId);
   }
   response.headers.set(AUTH_HEADERS.SESSION_ID, crypto.randomUUID());
+
+  // Set CSRF token cookie for state-changing request protection
+  try {
+    const { cookieHeader } = generateCsrfCookie();
+    response.headers.set('Set-Cookie', cookieHeader);
+  } catch (err) {
+    console.warn('[middleware:auth] Failed to generate CSRF cookie:', err);
+  }
 
   return response;
 }
@@ -277,11 +293,12 @@ export async function authenticate(request: NextRequest): Promise<AuthResult | n
     return null;
   }
 
-  const payload = verifyToken(token);
+  const payload = await verifyToken(token);
   if (!payload) {
     return null;
   }
 
+  // Read tenant from request headers (set by routing middleware via NextResponse.next)
   const routingTenantId = request.headers.get('x-tenant-id');
   if (routingTenantId && routingTenantId !== payload.tenantId) {
     return null;
@@ -374,12 +391,16 @@ async function addSecurityToResponse(
     if (redis) {
       const clientIp = extractClientIp(request);
       const isLoginRoute = pathname === '/api/auth/login';
+      const isRegisterRoute = pathname === '/api/auth/register';
 
-      // Determine tier
-      const tier = isLoginRoute ? EDGE_RATE_LIMITS.login : EDGE_RATE_LIMITS.ip;
+      // Determine tier — both login and register use the strict login tier
+      const isAuthRoute = isLoginRoute || isRegisterRoute;
+      const tier = isAuthRoute ? EDGE_RATE_LIMITS.login : EDGE_RATE_LIMITS.ip;
       const key = isLoginRoute
         ? `rl:login:${clientIp}`
-        : `rl:ip:${clientIp}`;
+        : isRegisterRoute
+          ? `rl:register:${clientIp}`
+          : `rl:ip:${clientIp}`;
 
       try {
         const now = Date.now();
@@ -442,8 +463,16 @@ async function addSecurityToResponse(
 // ═══════════════════════════════════════════════════════════════════════════════
 
 function isPublicRoute(pathname: string): boolean {
+  // Exact-match routes: must match the full pathname exactly
+  const EXACT_ROUTES = new Set(['/api/tenants', '/api/webhooks']);
+  if (EXACT_ROUTES.has(pathname)) return true;
+
   const publicRoutes = Array.from(PUBLIC_ROUTES);
-  return publicRoutes.some((route) => pathname === route || pathname.startsWith(route));
+  return publicRoutes.some((route) => {
+    // For non-exact routes, use startsWith to allow sub-paths
+    if (EXACT_ROUTES.has(route)) return false;
+    return pathname === route || pathname.startsWith(route);
+  });
 }
 
 function unauthorizedResponse(): Response {
@@ -462,6 +491,6 @@ function unauthorizedResponse(): Response {
 
 export const config = {
   matcher: [
-    '/((?!api/auth|_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)',
+    '/((?!_next/static|_next/image|favicon.ico|sitemap.xml|robots.txt).*)',
   ],
 };

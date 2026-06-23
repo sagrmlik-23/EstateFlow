@@ -54,7 +54,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // ── Fetch Billing Stats ──────────────────────────────────────────────
     const supabase = createClient(
       process.env.SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_KEY!,
+      process.env.SUPABASE_ANON_KEY!,
     );
 
     // Get all tenants

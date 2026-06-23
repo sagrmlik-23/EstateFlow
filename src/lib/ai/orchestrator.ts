@@ -33,10 +33,10 @@ function getDb() {
   if (_supabase) return _supabase;
 
   const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY;
+  const key = process.env.SUPABASE_ANON_KEY;
 
   if (!url || !key) {
-    throw new Error('Supabase not configured. Set SUPABASE_URL and SUPABASE_SERVICE_KEY.');
+    throw new Error('Supabase not configured. Set SUPABASE_URL and SUPABASE_ANON_KEY.');
   }
 
   _supabase = createClient(url, key, {
@@ -74,6 +74,7 @@ export interface TenantRecord {
   id: string;
   name: string;
   slug: string;
+  plan?: string;
   ai_voice_enabled: boolean;
   feature_flags: Record<string, unknown>;
   whatsapp_number: string | null;
@@ -214,8 +215,8 @@ export class AIVoiceOrchestrator {
       return false;
     }
 
-    // Don't call won/lost/archived leads
-    if (lead.status === 'won' || lead.status === 'lost' || lead.status === 'archived') {
+    // Don't call closed_won/closed_lost leads
+    if (lead.status === 'closed_won' || lead.status === 'closed_lost' || lead.status === 'closed_lost') {
       return false;
     }
 
@@ -472,7 +473,7 @@ export class AIVoiceOrchestrator {
     const leadRecord = lead as LeadRecord;
 
     // Only re-engage lost or stale leads
-    if (leadRecord.status !== 'lost' && leadRecord.status !== 'archived') {
+    if (leadRecord.status !== 'closed_lost' && leadRecord.status !== 'closed_lost') {
       const daysSinceUpdate = Math.floor(
         (Date.now() - new Date(leadRecord.updated_at).getTime()) / 86_400_000,
       );
@@ -563,8 +564,8 @@ export class AIVoiceOrchestrator {
       return featureFlags.call_delay_minutes as number;
     }
 
-    // Default delays by plan
-    switch (tenant.slug) {
+    // Default delays by billing plan (not tenant slug)
+    switch (tenant.plan) {
       case 'enterprise':
         return 1; // 1 minute
       case 'professional':

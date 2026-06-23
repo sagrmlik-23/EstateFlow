@@ -84,7 +84,7 @@ export async function GET(
       tenantId,
       userId,
       userRole || 'agent',
-      () => getVisitById(id),
+      () => getVisitById(id, tenantId),
     );
 
     if (!visit) {
@@ -192,7 +192,7 @@ export async function PATCH(
       tenantId,
       userId,
       userRole || 'agent',
-      () => getVisitById(id),
+      () => getVisitById(id, tenantId),
     );
 
     if (!existing) {
