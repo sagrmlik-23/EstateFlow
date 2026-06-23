@@ -14,7 +14,6 @@ import { WhatsAppBot } from '@/lib/chatbot/whatsappBot';
 import { WATIProvider } from '@/lib/communication/providers/wati';
 import { withRateLimit } from '@/lib/security/rateLimiter';
 import { auditLog } from '@/lib/security/auditLogger';
-import type { UserRole } from '@/types/auth';
 
 // ---------------------------------------------------------------------------
 // Zod schemas
@@ -45,7 +44,6 @@ export async function GET(
     // ── Auth headers ───────────────────────────────────────────────────────
     const userId = request.headers.get('x-user-id');
     const tenantId = request.headers.get('x-tenant-id');
-    const userRole = request.headers.get('x-user-role') as UserRole | null;
     const requestId = request.headers.get('x-session-id') || crypto.randomUUID();
 
     if (!userId || !tenantId) {
@@ -140,7 +138,7 @@ export async function POST(
     // ── Auth headers ───────────────────────────────────────────────────────
     const userId = request.headers.get('x-user-id');
     const tenantId = request.headers.get('x-tenant-id');
-    const userRole = request.headers.get('x-user-role') as UserRole | null;
+    const userRole = request.headers.get('x-user-role') as import('@/types/auth').UserRole | null;
     const requestId = request.headers.get('x-session-id') || crypto.randomUUID();
 
     if (!userId || !tenantId) {
@@ -267,25 +265,6 @@ export async function POST(
         userRole,
         messageId: sendResult.messageId,
       },
-    };
-
-    // Store in session history via internal method
-    // We access the internal storeMessage via a workaround since it's private
-    const messageRecord = {
-      id: outboundMessage.id,
-      sessionId: outboundMessage.sessionId,
-      from: outboundMessage.from,
-      to: outboundMessage.to,
-      type: outboundMessage.type,
-      content: outboundMessage.content,
-      mediaUrl: outboundMessage.mediaUrl,
-      latitude: outboundMessage.latitude,
-      longitude: outboundMessage.longitude,
-      label: outboundMessage.label,
-      buttonText: undefined as string | undefined,
-      timestamp: outboundMessage.timestamp,
-      direction: outboundMessage.direction,
-      metadata: outboundMessage.metadata as Record<string, unknown> | undefined,
     };
 
     // Update session timestamp

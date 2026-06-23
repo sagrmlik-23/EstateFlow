@@ -50,8 +50,6 @@ const leadFormSchema = z.object({
   notes: z.string().max(5000).nullable().optional(),
 });
 
-type LeadFormValues = z.infer<typeof leadFormSchema>;
-
 interface LeadFormProps {
   lead?: LeadRow | null;
   onSuccess?: (lead: LeadRow) => void;

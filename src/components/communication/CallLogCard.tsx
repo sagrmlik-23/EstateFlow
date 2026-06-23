@@ -1,6 +1,6 @@
 'use client';
 
-import { Phone, PhoneIncoming, PhoneOutgoing, Clock, User, AlertCircle } from 'lucide-react';
+import { PhoneIncoming, PhoneOutgoing, Clock, User } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';

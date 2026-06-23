@@ -6,7 +6,6 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
 import { withRateLimit } from '@/lib/security/rateLimiter';
-import type { UserRole } from '@/types/auth';
 
 // ---------------------------------------------------------------------------
 // GET /api/communication/messages/[id]
@@ -25,15 +24,12 @@ import type { UserRole } from '@/types/auth';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
+  { params: _params }: { params: Promise<{ id: string }> },
 ): Promise<NextResponse> {
   try {
-    const { id } = await params;
-
     // ── Auth headers ───────────────────────────────────────────────────────
     const userId = request.headers.get('x-user-id');
     const tenantId = request.headers.get('x-tenant-id');
-    const userRole = request.headers.get('x-user-role') as UserRole | null;
     const requestId = request.headers.get('x-session-id') || crypto.randomUUID();
 
     if (!userId || !tenantId) {

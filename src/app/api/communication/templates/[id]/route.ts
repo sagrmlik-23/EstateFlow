@@ -13,7 +13,6 @@ import {
   updateTemplate,
   deleteTemplate,
 } from '@/lib/communication/templates';
-import type { TemplateChannel, TemplateCategory } from '@/lib/communication/templates';
 import { withRateLimit } from '@/lib/security/rateLimiter';
 import { auditLog } from '@/lib/security/auditLogger';
 import type { UserRole } from '@/types/auth';
@@ -42,8 +41,6 @@ const updateTemplateSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
-export type UpdateTemplateBody = z.infer<typeof updateTemplateSchema>;
-
 // ---------------------------------------------------------------------------
 // Route params
 // ---------------------------------------------------------------------------
@@ -71,7 +68,6 @@ export async function GET(
     // ── Auth ──────────────────────────────────────────────────────────────
     const userId = request.headers.get('x-user-id');
     const tenantId = request.headers.get('x-tenant-id');
-    const userRole = request.headers.get('x-user-role') as UserRole | null;
     const requestId = request.headers.get('x-session-id') || crypto.randomUUID();
 
     if (!userId || !tenantId) {

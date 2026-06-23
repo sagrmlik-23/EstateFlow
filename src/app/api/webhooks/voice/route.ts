@@ -14,7 +14,6 @@ import { auditLog } from '@/lib/security/auditLogger';
 import { logActivity } from '@/lib/activity/queries';
 import type {
   WebhookResult,
-  VoiceFeatureFlags,
 } from '@/types/communication';
 
 // ---------------------------------------------------------------------------

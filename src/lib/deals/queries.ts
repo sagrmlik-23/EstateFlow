@@ -242,7 +242,6 @@ export async function createDeal(
 ): Promise<DealRow> {
   const supabase = getSupabase();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const insertData: Record<string, any> = {
     tenant_id: tenantId,
     title: data.title,
@@ -257,7 +256,6 @@ export async function createDeal(
     created_by: createdByUserId,
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: result, error } = await (supabase.from('deals') as any)
     .insert(insertData)
     .select()
@@ -291,7 +289,6 @@ export async function updateDealStage(
   const wasClosed = false; // We'll fetch existing state first
 
   // Fetch existing deal to determine if we're transitioning to/from closed
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: existing, error: fetchErr } = await (supabase
     .from('deals') as any)
     .select('stage, closed_at')
@@ -303,7 +300,6 @@ export async function updateDealStage(
     throw new Error(`Failed to fetch deal for stage update: ${fetchErr.message}`);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const updateData: Record<string, any> = {
     stage,
     updated_at: now,
@@ -316,7 +312,6 @@ export async function updateDealStage(
     updateData.closed_at = null;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: result, error } = await (supabase.from('deals') as any)
     .update(updateData)
     .eq('id', dealId)
@@ -344,7 +339,6 @@ export async function updateDeal(
 ): Promise<DealRow> {
   const supabase = getSupabase();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const updateData: Record<string, any> = {};
 
   if (data.title !== undefined) updateData.title = data.title;
@@ -357,7 +351,6 @@ export async function updateDeal(
 
   updateData.updated_at = new Date().toISOString();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: result, error } = await (supabase.from('deals') as any)
     .update(updateData)
     .eq('id', dealId)
@@ -383,7 +376,6 @@ export async function updateDeal(
 export async function deleteDeal(dealId: string): Promise<void> {
   const supabase = getSupabase();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase.from('deals') as any)
     .update({
       stage: 'closed_lost',
@@ -417,7 +409,6 @@ export async function getDealStats(tenantId: string): Promise<DealStats> {
   const supabase = getSupabase();
 
   // Fetch all deals for the tenant (id, stage, value)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase
     .from('deals') as any)
     .select('stage, value')

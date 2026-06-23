@@ -95,7 +95,7 @@ const setQuietHoursSchema = quietHoursSchema;
  * In production, replace with a PostgreSQL table (notification_preferences).
  */
 const preferencesStore: Map<string, NotificationPreference> = new Map();
-let prefIdCounter = 0;
+const prefIdCounter = 0;
 
 // ---------------------------------------------------------------------------
 // NotificationPreferencesService

@@ -86,7 +86,8 @@
     "@types/web-push": "^3.6.4",
     "eslint": "^9.18.0",
     "eslint-config-next": "^15.2.0",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.62.0"
   },
   "main": "next.config.js",
   "keywords": [],

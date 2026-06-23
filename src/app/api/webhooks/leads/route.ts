@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { handleWebhookCallback, parseWebhookPayload } from '@/lib/leads/intakeWebhook';
+import { handleWebhookCallback } from '@/lib/leads/intakeWebhook';
 import { withRateLimit } from '@/lib/security/rateLimiter';
 import { auditLog } from '@/lib/security/auditLogger';
 import { assignLeadToAgent } from '@/lib/leads/smartAssignment';

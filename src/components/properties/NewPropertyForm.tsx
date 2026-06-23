@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { ArrowLeft, Loader2, Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -289,7 +288,7 @@ export default function NewPropertyForm({ tenant }: { tenant: string }) {
                 <SelectValue placeholder="Select type" />
               </SelectTrigger>
               <SelectContent>
-                {Object.entries(PROPERTY_TYPES).map(([key, val]) => (
+                {Object.entries(PROPERTY_TYPES).map(([_key, val]) => (
                   <SelectItem key={val} value={val}>
                     {getPropertyTypeLabel(val)}
                   </SelectItem>

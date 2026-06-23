@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   flexRender,
@@ -24,7 +24,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { ScoreBar } from '@/components/ui/ScoreBar';
-import { cn, maskPhone, formatDate, getScoreColor } from '@/lib/utils';
+import { cn, maskPhone, formatDate } from '@/lib/utils';
 import type { LeadRow } from '@/lib/leads/queries';
 
 interface LeadTableProps {

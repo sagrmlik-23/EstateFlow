@@ -8,7 +8,6 @@ import {
   ArrowDown,
   Crown,
   Medal,
-  RefreshCw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { AgentMetric } from '@/lib/dashboard/queries';

@@ -1,8 +1,7 @@
 'use client';
 
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
-import { PieChartIcon, RefreshCw } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { PieChartIcon } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────
 

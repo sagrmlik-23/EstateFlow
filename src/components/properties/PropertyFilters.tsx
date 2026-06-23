@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback } from 'react';
+import { useCallback } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { Search, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
@@ -37,7 +37,7 @@ const STATUS_OPTIONS = [
 
 const TYPE_OPTIONS = [
   { value: '', label: 'All Types' },
-  ...Object.entries(PROPERTY_TYPES).map(([key, val]) => ({
+  ...Object.entries(PROPERTY_TYPES).map(([_key, val]) => ({
     value: val,
     label: getPropertyTypeLabel(val),
   })),

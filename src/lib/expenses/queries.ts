@@ -119,7 +119,6 @@ export async function createExpense(
 ): Promise<ExpenseRow> {
   const supabase = getSupabase();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const insertData: Record<string, any> = {
     tenant_id: tenantId,
     category: data.category,
@@ -131,7 +130,6 @@ export async function createExpense(
     status: data.status ?? 'pending',
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: result, error } = await (supabase.from('expenses') as any)
     .insert(insertData)
     .select()
@@ -238,7 +236,6 @@ export async function approveExpense(
 
   const now = new Date().toISOString();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const updateData: Record<string, any> = {
     status,
     updated_at: now,
@@ -249,7 +246,6 @@ export async function approveExpense(
     updateData.approved_at = now;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: result, error } = await (supabase.from('expenses') as any)
     .update(updateData)
     .eq('id', expenseId)
@@ -288,7 +284,6 @@ export async function getExpenseStats(
   const startDate = `${year}-${String(m).padStart(2, '0')}-01`;
   const endDate = new Date(year, m, 0).toISOString().split('T')[0];
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase
     .from('expenses') as any)
     .select('category, amount, status')

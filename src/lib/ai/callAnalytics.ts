@@ -116,7 +116,7 @@ export async function logCallAnalytics(
   const supabase = getDb();
   const today = new Date().toISOString().slice(0, 10);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const payload: Record<string, any> = {
     tenant_id: tenantId,
     ai_agent_id: aiAgentId,
@@ -133,7 +133,7 @@ export async function logCallAnalytics(
   if (callData.scriptPerformance !== undefined) payload.script_performance = callData.scriptPerformance;
 
   // Upsert: on conflict (tenant_id, ai_agent_id, date), update the row
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const { data, error } = await (supabase.from('ai_call_analytics') as any)
   .upsert(payload, {
     onConflict: 'tenant_id, ai_agent_id, date',
@@ -165,7 +165,7 @@ export async function getCallAnalytics(
 ): Promise<AggregatedAnalytics> {
   const supabase = getDb();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const { data, error } = await (supabase.from('ai_call_analytics') as any)
     .select('*')
     .eq('tenant_id', tenantId)
@@ -242,7 +242,7 @@ export async function getAgentAnalytics(
 ): Promise<AgentAnalyticsItem[]> {
   const supabase = getDb();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const { data, error } = await (supabase.from('ai_call_analytics') as any)
     .select(`
       ai_agent_id,
@@ -326,14 +326,14 @@ export async function getAgentAnalytics(
   // Fetch agent names if we have agents
   if (results.length > 0) {
     const agentIds = results.map((r) => r.agentId);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const { data: agentData, error: agentErr } = await (supabase
       .from('ai_agents') as any)
       .select('id, name')
       .in('id', agentIds);
 
     if (!agentErr && agentData) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const nameMap = new Map((agentData as any[]).map((a: any) => [a.id, a.name]));
       for (const item of results) {
         item.agentName = nameMap.get(item.agentId) || 'Unknown Agent';
@@ -360,7 +360,7 @@ export async function getTopObjections(
 ): Promise<{ objection: string; count: number }[]> {
   const supabase = getDb();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const { data, error } = await (supabase.from('ai_call_analytics') as any)
     .select('top_objections')
     .eq('tenant_id', tenantId)
@@ -409,7 +409,7 @@ export async function getCallTrends(
   dateFromDate.setDate(dateFromDate.getDate() - days);
   const dateFrom = dateFromDate.toISOString().slice(0, 10);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const { data, error } = await (supabase.from('ai_call_analytics') as any)
     .select('date, total_calls, connected_calls, failed_calls, conversion_rate')
     .eq('tenant_id', tenantId)

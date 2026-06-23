@@ -23,7 +23,7 @@ import {
   Clock,
 } from 'lucide-react';
 import { cn, timeAgo, getActivityIconName } from '@/lib/utils';
-import type { ActivityEntry, ActivityType } from '@/lib/dashboard/queries';
+import type { ActivityEntry } from '@/lib/dashboard/queries';
 import { getActivityFeed } from '@/lib/activity/queries';
 
 // ---------------------------------------------------------------------------

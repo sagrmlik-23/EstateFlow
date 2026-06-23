@@ -108,7 +108,6 @@ export interface CallHistoryResult {
 export async function queueCall(params: QueueCallParams): Promise<CallQueueRow> {
   const supabase = getDb();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const insertData: Record<string, any> = {
     tenant_id: params.tenantId,
     lead_id: params.leadId,
@@ -125,7 +124,6 @@ export async function queueCall(params: QueueCallParams): Promise<CallQueueRow> 
     metadata: params.metadata ?? {},
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase.from('ai_call_queue') as any)
     .insert(insertData)
     .select()
@@ -149,7 +147,6 @@ export async function getPendingCalls(
   const supabase = getDb();
   const now = new Date().toISOString();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase.from('ai_call_queue') as any)
     .select('*')
     .eq('status', AI_CALL_STATUSES.QUEUED)
@@ -176,7 +173,6 @@ export async function updateCallStatus(
 ): Promise<void> {
   const supabase = getDb();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const updateData: Record<string, any> = {
     status,
     updated_at: new Date().toISOString(),
@@ -190,7 +186,6 @@ export async function updateCallStatus(
     updateData.provider_call_id = providerCallId;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase.from('ai_call_queue') as any)
     .update(updateData)
     .eq('id', callId);
@@ -218,7 +213,6 @@ export async function completeCall(
 ): Promise<void> {
   const supabase = getDb();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const updateData: Record<string, any> = {
     status: result.status,
     ended_at: new Date().toISOString(),
@@ -230,7 +224,6 @@ export async function completeCall(
   if (result.durationSeconds !== undefined) updateData.duration_seconds = result.durationSeconds;
   if (result.sentiment !== undefined) updateData.sentiment = result.sentiment;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase.from('ai_call_queue') as any)
     .update(updateData)
     .eq('id', callId);
@@ -252,7 +245,6 @@ export async function failCall(
   const supabase = getDb();
 
   // First, get current call data to check retry count
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: current, error: fetchError } = await (supabase
     .from('ai_call_queue') as any)
     .select('retry_count, max_retries')
@@ -268,7 +260,6 @@ export async function failCall(
   const maxRetries = current?.max_retries ?? 3;
   const shouldRetry = retryCount < maxRetries;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const updateData: Record<string, any> = {
     status: shouldRetry ? AI_CALL_STATUSES.QUEUED : AI_CALL_STATUSES.FAILED,
     error: errorMessage,
@@ -283,7 +274,6 @@ export async function failCall(
     updateData.scheduled_at = nextAttempt.toISOString();
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error: updateErr } = await (supabase.from('ai_call_queue') as any)
     .update(updateData)
     .eq('id', callId);
@@ -305,7 +295,6 @@ export async function getCallHistory(
 ): Promise<CallHistoryResult> {
   const supabase = getDb();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let query = (supabase.from('ai_call_queue') as any)
     .select('*', { count: 'exact' })
     .eq('tenant_id', tenantId);
@@ -361,7 +350,6 @@ export async function getCallHistory(
 export async function getCallById(callId: string): Promise<CallQueueRow | null> {
   const supabase = getDb();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase.from('ai_call_queue') as any)
     .select('*')
     .eq('id', callId)

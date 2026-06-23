@@ -32,7 +32,7 @@ interface LeadCardProps {
   onSelect?: (id: string, selected: boolean) => void;
 }
 
-export function LeadCard({ lead, isSelected = false, onSelect }: LeadCardProps) {
+export function LeadCard({ lead, isSelected = false, onSelect: _onSelect }: LeadCardProps) {
   const router = useRouter();
 
   return (

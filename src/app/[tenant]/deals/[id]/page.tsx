@@ -14,14 +14,12 @@ import {
   CheckCircle2,
   Circle,
   Target,
-  RefreshCw,
   AlertCircle,
   Percent,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { cn, formatPrice, formatDate } from '@/lib/utils';
 
 // ---------------------------------------------------------------------------

@@ -20,10 +20,6 @@ import type { UserRole } from '@/types/auth';
 // Zod schemas
 // ---------------------------------------------------------------------------
 
-const ALLOWED_VISIT_STATUSES = [
-  'scheduled', 'completed', 'cancelled', 'rescheduled', 'no_show',
-] as const;
-
 const createSiteVisitSchema = z.object({
   leadId: z.string().uuid('Lead ID must be a valid UUID'),
   propertyId: z.string().uuid('Property ID must be a valid UUID'),

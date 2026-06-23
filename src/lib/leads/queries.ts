@@ -271,7 +271,6 @@ export async function createLead(
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const insertData: Record<string, any> = {
     tenant_id: tenantId,
     full_name: data.full_name,
@@ -290,7 +289,6 @@ export async function createLead(
     created_by: createdByUserId,
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: result, error } = await (supabase.from('leads') as any)
     .insert(insertData)
     .select()
@@ -314,7 +312,6 @@ export async function updateLead(
 ): Promise<LeadRow> {
   const supabase = getDb();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const updateData: Record<string, any> = {};
 
   if (data.full_name !== undefined) updateData.full_name = data.full_name;
@@ -344,7 +341,6 @@ export async function updateLead(
 
   updateData.updated_at = new Date().toISOString();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: result, error } = await (supabase.from('leads') as any)
     .update(updateData)
     .eq('id', leadId)
@@ -366,7 +362,6 @@ export async function updateLead(
 export async function deleteLead(leadId: string): Promise<void> {
   const supabase = getDb();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error } = await (supabase.from('leads') as any)
     .update({
       status: 'archived',
@@ -392,7 +387,6 @@ export async function bulkUpdateLeads(
 
   const supabase = getDb();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const updateData: Record<string, any> = {};
   if (data.status !== undefined) updateData.status = data.status;
   if (data.assigned_agent_id !== undefined) updateData.assigned_agent_id = data.assigned_agent_id;
@@ -400,7 +394,6 @@ export async function bulkUpdateLeads(
   if (data.ai_score !== undefined) updateData.ai_score = data.ai_score;
   updateData.updated_at = new Date().toISOString();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error, count } = await (supabase.from('leads') as any)
     .update(updateData)
     .in('id', leadIds)
@@ -423,7 +416,6 @@ export async function getLeadActivity(leadId: string): Promise<LeadActivityItem[
   const activities: LeadActivityItem[] = [];
 
   // Fetch calls for this lead
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: calls, error: callsErr } = await (supabase.from('calls') as any)
     .select('id, status, direction, duration_seconds, notes, created_at')
     .eq('lead_id', leadId)
@@ -443,7 +435,6 @@ export async function getLeadActivity(leadId: string): Promise<LeadActivityItem[
   }
 
   // Fetch messages for this lead
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: msgs, error: msgsErr } = await (supabase.from('messages') as any)
     .select('id, channel, direction, content, created_at')
     .eq('lead_id', leadId)
@@ -463,7 +454,6 @@ export async function getLeadActivity(leadId: string): Promise<LeadActivityItem[
   }
 
   // Fetch site visits for this lead
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: visits, error: visitsErr } = await (supabase.from('site_visits') as any)
     .select('id, status, scheduled_at, notes, created_at')
     .eq('lead_id', leadId)
@@ -502,7 +492,6 @@ export async function searchLeads(
   const supabase = getDb();
   const searchTerm = `%${query}%`;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error, count } = await (supabase.from('leads') as any)
     .select('*', { count: 'exact' })
     .eq('tenant_id', tenantId)
@@ -551,7 +540,6 @@ async function findLeadsByPhone(
   //
   // Strategy: Fetch leads for tenant, decrypt phone in-app, and compare.
   // For the MVP, we use a LIMIT 50 scan.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase.from('leads') as any)
     .select('id, full_name, phone, email, status, created_at')
     .eq('tenant_id', tenantId)
@@ -607,9 +595,7 @@ async function fetchLeadsColumn(
   tenantId: string,
   column: string,
   filters: LeadFilters,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   supabase: any,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
 ): Promise<any[]> {
   let query = supabase
     .from('leads')
@@ -665,7 +651,7 @@ export async function getLeadStats(
 
   // --- By AI score range ---
   const scoreRows = await fetchLeadsColumn(tenantId, 'ai_score', filters, supabase);
-  let scoreStats = { low: 0, medium: 0, high: 0, unassigned: 0 };
+  const scoreStats = { low: 0, medium: 0, high: 0, unassigned: 0 };
   for (const row of scoreRows) {
     const score = row.ai_score;
     if (score === null || score === undefined) {

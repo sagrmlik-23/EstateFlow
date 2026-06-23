@@ -126,7 +126,6 @@ export async function createTask(
     leadId = data.relatedTo;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const insertData: Record<string, any> = {
     tenant_id: data.tenantId,
     title: data.title,
@@ -140,7 +139,6 @@ export async function createTask(
     created_by: createdByUserId,
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: result, error } = await (supabase.from('tasks') as any)
     .insert(insertData)
     .select()
@@ -236,7 +234,6 @@ export async function getTaskById(taskId: string): Promise<TaskRow | null> {
 export async function updateTask(taskId: string, data: UpdateTaskInput): Promise<TaskRow> {
   const supabase = getDb();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const updateData: Record<string, any> = {};
 
   if (data.title !== undefined) updateData.title = data.title;
@@ -256,7 +253,6 @@ export async function updateTask(taskId: string, data: UpdateTaskInput): Promise
 
   updateData.updated_at = new Date().toISOString();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: result, error } = await (supabase.from('tasks') as any)
     .update(updateData)
     .eq('id', taskId)

@@ -242,9 +242,6 @@ export async function GET(): Promise<NextResponse<HealthCheckResponse>> {
     checkEdgeConfig(),
   ]);
 
-  const allHealthy = [database, redis, edgeConfig].every(
-    (s) => s.status === 'healthy',
-  );
   const anyUnhealthy = [database, redis, edgeConfig].some(
     (s) => s.status === 'unhealthy',
   );

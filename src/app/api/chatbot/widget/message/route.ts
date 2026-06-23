@@ -6,7 +6,7 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
-import type { WidgetBotResponse, WidgetChatMessage } from '@/types/chatbot';
+import type { WidgetBotResponse } from '@/types/chatbot';
 
 // ---------------------------------------------------------------------------
 // Rate limiting — simple in-memory store

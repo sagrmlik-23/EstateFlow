@@ -182,7 +182,6 @@ export async function isSelfieReused(
 ): Promise<boolean> {
   const supabase = getDb();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase.from('attendance') as any)
     .select('id')
     .eq('tenant_id', tenantId)
@@ -233,7 +232,6 @@ export async function markAttendance(
   const combinedNotes = [data.notes, gpsNotes].filter(Boolean).join(' | ') || null;
 
   // --- Upsert (INSERT or UPDATE on unique constraint) ---
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const insertData: Record<string, any> = {
     tenant_id: tenantId,
     user_id: userId,
@@ -249,7 +247,6 @@ export async function markAttendance(
     updated_at: new Date().toISOString(),
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: result, error } = await (supabase.from('attendance') as any)
     .upsert(insertData, {
       onConflict: 'tenant_id,user_id,date',
@@ -278,7 +275,6 @@ export async function getAttendance(
 ): Promise<AttendanceRow[]> {
   const supabase = getDb();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase.from('attendance') as any)
     .select('*')
     .eq('tenant_id', tenantId)
@@ -306,7 +302,6 @@ export async function getTodayAttendance(
   const supabase = getDb();
   const today = new Date().toISOString().split('T')[0];
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase.from('attendance') as any)
     .select('*')
     .eq('tenant_id', tenantId)
@@ -340,7 +335,6 @@ export async function getTeamAttendance(
 ): Promise<TeamAttendanceRecord[]> {
   const supabase = getDb();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase.from('attendance') as any)
     .select('*, users!inner(full_name, email, role, avatar_url)')
     .eq('tenant_id', tenantId)
@@ -353,7 +347,6 @@ export async function getTeamAttendance(
   }
 
   // Flatten joined user fields
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return ((data as any[]) || []).map((row) => {
     const user = row.users as Record<string, unknown> | null;
     const flat: TeamAttendanceRecord = {
@@ -399,7 +392,6 @@ export async function getAttendanceStats(
   const lastDay = new Date(year, mon, 0).getDate();
   const dateTo = `${year}-${String(mon).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase.from('attendance') as any)
     .select('status')
     .eq('tenant_id', tenantId)
@@ -473,7 +465,6 @@ export async function updateAttendance(
 ): Promise<AttendanceRow> {
   const supabase = getDb();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const updateData: Record<string, any> = {};
 
   if (data.checkIn !== undefined) updateData.clock_in = data.checkIn;
@@ -486,7 +477,6 @@ export async function updateAttendance(
 
   updateData.updated_at = new Date().toISOString();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: result, error } = await (supabase.from('attendance') as any)
     .update(updateData)
     .eq('id', attendanceId)

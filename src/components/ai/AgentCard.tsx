@@ -11,7 +11,6 @@ import {
   PauseCircle,
   PlayCircle,
   Trash2,
-  AlertCircle,
   Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';

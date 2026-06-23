@@ -40,8 +40,6 @@ const createTemplateSchema = z.object({
   isActive: z.boolean().optional().default(true),
 });
 
-export type CreateTemplateBody = z.infer<typeof createTemplateSchema>;
-
 // ---------------------------------------------------------------------------
 // GET /api/communication/templates
 // ---------------------------------------------------------------------------
@@ -59,7 +57,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // ── Auth ──────────────────────────────────────────────────────────────
     const userId = request.headers.get('x-user-id');
     const tenantId = request.headers.get('x-tenant-id');
-    const userRole = request.headers.get('x-user-role') as UserRole | null;
     const requestId = request.headers.get('x-session-id') || crypto.randomUUID();
 
     if (!userId || !tenantId) {

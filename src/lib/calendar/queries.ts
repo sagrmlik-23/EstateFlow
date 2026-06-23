@@ -96,7 +96,6 @@ export async function getSiteVisits(
 ): Promise<SiteVisitWithDetails[]> {
   const supabase = getDb();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let query = (supabase.from('site_visits') as any)
     .select('*, leads!left(full_name, phone), properties!left(title, location), users!site_visits_scheduled_by_fkey!left(full_name)')
     .eq('tenant_id', tenantId)
@@ -116,7 +115,6 @@ export async function getSiteVisits(
   }
 
   // Flatten joined data
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return ((data as any[]) || []).map((row) => {
     const lead = row.leads as Record<string, unknown> | null;
     const property = row.properties as Record<string, unknown> | null;
@@ -170,7 +168,6 @@ export async function createSiteVisit(
     scheduledAt = `${date}T${String(time).padStart(2, '0')}:00:00.000Z`;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const insertData: Record<string, any> = {
     lead_id: leadId,
     property_id: propertyId,
@@ -180,7 +177,6 @@ export async function createSiteVisit(
     notes: notes ?? null,
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: result, error } = await (supabase.from('site_visits') as any)
     .insert(insertData)
     .select()
@@ -204,7 +200,6 @@ export async function updateSiteVisit(
 ): Promise<SiteVisitRow> {
   const supabase = getDb();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const updateData: Record<string, any> = {};
 
   if (data.status !== undefined) updateData.status = data.status;
@@ -228,7 +223,6 @@ export async function updateSiteVisit(
 
   updateData.updated_at = new Date().toISOString();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: result, error } = await (supabase.from('site_visits') as any)
     .update(updateData)
     .eq('id', visitId)
@@ -256,7 +250,6 @@ export async function getAgentSchedule(
   const dateFrom = `${date}T00:00:00.000Z`;
   const dateTo = `${date}T23:59:59.999Z`;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase.from('site_visits') as any)
     .select('*, leads!left(full_name, phone), properties!left(title, location)')
     .eq('scheduled_by', agentId)
@@ -269,7 +262,6 @@ export async function getAgentSchedule(
     throw new Error(`Failed to fetch agent schedule: ${error.message}`);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return ((data as any[]) || []).map((row) => {
     const lead = row.leads as Record<string, unknown> | null;
     const property = row.properties as Record<string, unknown> | null;
@@ -314,7 +306,6 @@ export async function getVisitById(
 ): Promise<SiteVisitWithDetails | null> {
   const supabase = getDb();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase.from('site_visits') as any)
     .select('*, leads!left(full_name, phone), properties!left(title, location), users!site_visits_scheduled_by_fkey!left(full_name)')
     .eq('id', visitId)
@@ -381,7 +372,6 @@ export async function getTomorrowVisits(
   const dateFrom = `${dateStr}T00:00:00.000Z`;
   const dateTo = `${dateStr}T23:59:59.999Z`;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase.from('site_visits') as any)
     .select('id, scheduled_at, leads!left(full_name, phone), properties!left(title, location), scheduled_by')
     .eq('tenant_id', tenantId)
@@ -395,7 +385,6 @@ export async function getTomorrowVisits(
     return [];
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return ((data as any[]) || []).map((row) => {
     const lead = row.leads as Record<string, unknown> | null;
     const property = row.properties as Record<string, unknown> | null;

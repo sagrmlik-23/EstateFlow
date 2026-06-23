@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import {
-  MessageSquare,
   Search,
   ChevronLeft,
   ChevronRight,
@@ -12,8 +11,6 @@ import {
   Filter,
   X,
   Inbox,
-  Send,
-  Mail,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';

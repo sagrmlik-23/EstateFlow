@@ -89,7 +89,6 @@ export interface SendBulkNotificationParams {
  * In production, replace with a PostgreSQL table (notifications).
  */
 const notificationStore: Notification[] = [];
-let notificationIdCounter = 0;
 
 // ---------------------------------------------------------------------------
 // Notification templates

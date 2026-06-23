@@ -81,7 +81,7 @@ function StatsCardSkeleton() {
 
 // ─── Stat Card ────────────────────────────────────────────────────────────
 
-function StatCard({ label, value, icon, change, changeLabel, colorClass, iconBg }: StatCardData) {
+function StatCard({ label, value, icon, change, changeLabel, colorClass: _colorClass, iconBg }: StatCardData) {
   const isPositive = change >= 0;
   const isPercent = label === 'Conversion Rate';
 

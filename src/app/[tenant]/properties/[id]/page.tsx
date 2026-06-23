@@ -11,7 +11,6 @@ import {
   Home,
   Phone,
   User,
-  Calendar,
   Check,
   X,
 } from 'lucide-react';

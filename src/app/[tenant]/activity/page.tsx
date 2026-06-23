@@ -13,8 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Calendar, Filter, RotateCcw } from 'lucide-react';
 import ActivityTimeline from '@/components/activity/ActivityTimeline';
-import { cn } from '@/lib/utils';
-import type { ActivityType } from '@/lib/dashboard/queries';
+
 
 // ---------------------------------------------------------------------------
 // Activity type options

@@ -7,16 +7,12 @@ import {
   RefreshCw,
   AlertCircle,
   CheckCircle2,
-  Circle,
-  Clock,
   AlertTriangle,
-  CalendarDays,
-  UserRound,
-  Filter,
   Search,
   Flag,
   ListTodo,
-  Loader2,
+  UserRound,
+  CalendarDays,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';

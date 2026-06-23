@@ -20,8 +20,6 @@ import type { UserRole } from '@/types/auth';
 // Zod schemas
 // ---------------------------------------------------------------------------
 
-const ALLOWED_LANGUAGES = ['en', 'hi', 'gu', 'mr', 'bn', 'ta', 'te', 'kn', 'ml', 'pa', 'es'] as const;
-
 const scriptTemplatesSchema = z.object({
   firstContact: z.string().max(5000).optional(),
   followUp: z.string().max(5000).optional(),

@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import ChatBubble from './ChatBubble';
-import type { WidgetChatMessage, WidgetBotResponse, PropertyCardData } from '@/types/chatbot';
+import type { WidgetChatMessage, WidgetBotResponse } from '@/types/chatbot';
 
 // ---------------------------------------------------------------------------
 // Emoji list for picker

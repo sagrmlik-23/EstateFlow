@@ -11,7 +11,6 @@ import {
   AlertCircle,
   Filter,
   X,
-  CalendarDays,
   PhoneIncoming,
   PhoneOutgoing,
 } from 'lucide-react';

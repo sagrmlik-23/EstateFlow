@@ -1,17 +1,14 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
 import {
   Plus,
   RefreshCw,
   AlertCircle,
   Bot,
-  Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -47,8 +44,6 @@ export default function AIAgentsPage({
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [togglingIds, setTogglingIds] = useState<Set<string>>(new Set());
 
-  const router = useRouter();
-  const pathname = usePathname();
 
   // Resolve params
   useEffect(() => {
@@ -88,7 +83,7 @@ export default function AIAgentsPage({
     } finally {
       setIsLoading(false);
     }
-  }, [tenant]);
+  }, [tenant, tenantId]);
 
   useEffect(() => {
     if (tenant) {

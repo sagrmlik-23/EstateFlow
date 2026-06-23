@@ -83,7 +83,6 @@ export async function auditLog(params: AuditLogParams): Promise<void> {
 
   if (supabase) {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await supabase.from('audit_logs').insert(record as any);
       if (error) {
         logger.error({ error, record }, 'Failed to insert audit log to Supabase');

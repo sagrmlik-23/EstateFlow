@@ -7,26 +7,21 @@ import {
   RefreshCw,
   AlertCircle,
   DollarSign,
-  Filter,
   Search,
-  ArrowUpDown,
   CheckCircle2,
   XCircle,
   Clock,
   FileText,
   UserRound,
   CalendarDays,
-  TrendingUp,
   PieChart,
   Receipt,
-  Loader2,
   Eye,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';

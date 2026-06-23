@@ -18,8 +18,6 @@ const markReadSchema = z.object({
   markAll: z.boolean().optional(),
 });
 
-type MarkReadBody = z.infer<typeof markReadSchema>;
-
 // ---------------------------------------------------------------------------
 // GET /api/communication/notifications
 // ---------------------------------------------------------------------------

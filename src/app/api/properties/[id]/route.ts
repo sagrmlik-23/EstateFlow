@@ -55,31 +55,6 @@ const IdParamsSchema = z.object({
 });
 
 // ---------------------------------------------------------------------------
-// Helper: extract auth + rate limit
-// ---------------------------------------------------------------------------
-
-async function checkAuthAndPerms(
-  request: NextRequest,
-  permCheck: (role: import('@/types/auth').UserRole) => boolean,
-) {
-  const auth = await authenticate(request);
-  if (!auth) {
-    return { error: NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 }) };
-  }
-
-  if (!permCheck(auth.role)) {
-    return { error: NextResponse.json({ success: false, error: 'Forbidden: insufficient permissions' }, { status: 403 }) };
-  }
-
-  const { result: rlResult, headers: rlHeaders } = await withRateLimit(request, 'user', auth.userId);
-  if (!rlResult.allowed) {
-    return { error: rateLimitResponse(rlResult) };
-  }
-
-  return { auth, rlHeaders };
-}
-
-// ---------------------------------------------------------------------------
 // GET — Get single property
 // ---------------------------------------------------------------------------
 

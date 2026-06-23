@@ -84,7 +84,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // ── Query sessions ─────────────────────────────────────────────────────
     const whatsappBot = WhatsAppBot.create();
 
-    let sessions = whatsappBot.getAllSessions().filter((s) => {
+    const sessions = whatsappBot.getAllSessions().filter((s) => {
       // Filter by tenant (in production, sessions would have tenantId stored)
       if (status && s.status !== status) return false;
       if (phoneNumber && !s.phoneNumber.includes(phoneNumber)) return false;

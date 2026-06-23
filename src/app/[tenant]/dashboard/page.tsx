@@ -136,7 +136,7 @@ function DashboardEmpty() {
 
 // ─── Dashboard Content (Server Component) ─────────────────────────────────
 
-async function DashboardContent({ tenant, searchParams }: { tenant: string; searchParams?: { refresh?: string } }) {
+async function DashboardContent({ tenant, searchParams: _searchParams }: { tenant: string; searchParams?: { refresh?: string } }) {
   const tenantId = await resolveTenantId(tenant);
   const [stats, recentActivity, agentStats] = await Promise.all([
     fetchDashboardStats(tenantId),

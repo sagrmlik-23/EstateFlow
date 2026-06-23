@@ -155,7 +155,6 @@ export async function createForm(
 
   const settings: FormSettings = data.settings || {};
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const insertData: Record<string, any> = {
     tenant_id: tenantId,
     name: data.name,
@@ -173,10 +172,8 @@ export async function createForm(
   insertData.form_fields = fields;
   // For settings, we use a top-level column approach if available or embed
   // For now we just store in the form_fields JSONB's _meta key
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (insertData as any)._settings = settings;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: result, error } = await (supabase.from('forms') as any)
     .insert(insertData)
     .select()
@@ -265,7 +262,6 @@ export async function getFormById(formId: string): Promise<FormRow | null> {
 export async function updateForm(formId: string, data: UpdateFormInput): Promise<FormRow> {
   const supabase = getDb();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const updateData: Record<string, any> = {
     updated_at: new Date().toISOString(),
   };
@@ -283,7 +279,6 @@ export async function updateForm(formId: string, data: UpdateFormInput): Promise
     }));
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: result, error } = await (supabase.from('forms') as any)
     .update(updateData)
     .eq('id', formId)
@@ -372,7 +367,6 @@ export async function submitFormResponse(
   // As a robust fallback, we increment submission_count on the form.
   const responseId = crypto.randomUUID();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const insertData: Record<string, any> = {
     id: responseId,
     form_id: formId,
@@ -385,7 +379,6 @@ export async function submitFormResponse(
 
   // Try to insert into form_responses table; fallback to just bumping the counter
   try {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error: respError } = await (supabase.from('form_responses') as any)
       .insert(insertData);
 
@@ -398,7 +391,6 @@ export async function submitFormResponse(
   }
 
   // Increment submission count regardless
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   await (supabase.from('forms') as any)
     .update({ submission_count: (form.submission_count || 0) + 1 })
     .eq('id', formId);
@@ -462,7 +454,6 @@ export async function getFormResponses(
  * Normalize a raw DB row to our typed FormRow interface.
  * Handles JSONB parsing for form_fields.
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function normalizeFormRow(row: any): FormRow {
   if (!row) throw new Error('Empty form row');
 

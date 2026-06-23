@@ -1,6 +1,5 @@
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { LeadStatus } from '@/lib/types';
 import { LEAD_STATUSES } from '@/lib/constants';
 
 const STATUS_LABELS: Record<string, string> = {

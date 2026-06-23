@@ -2,7 +2,6 @@ import { NextResponse, type NextRequest } from 'next/server';
 import * as bcrypt from 'bcryptjs';
 import { generateToken } from '@/lib/auth/jwt';
 import type { RegisterRequest, RegisterResponse } from '@/types/auth';
-import type { UserRole } from '@/types/auth';
 
 /**
  * POST /api/auth/register

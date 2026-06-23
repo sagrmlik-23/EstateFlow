@@ -8,7 +8,6 @@ import { NextResponse, type NextRequest } from 'next/server';
 import pino from 'pino';
 
 import { withRateLimit } from '@/lib/security/rateLimiter';
-import type { UserRole } from '@/types/auth';
 
 // ---------------------------------------------------------------------------
 // Logger
@@ -45,8 +44,6 @@ export async function GET(
     // ── Auth headers ───────────────────────────────────────────────────────
     const userId = request.headers.get('x-user-id');
     const tenantId = request.headers.get('x-tenant-id');
-    const userRole = request.headers.get('x-user-role') as UserRole | null;
-
     if (!userId || !tenantId) {
       return NextResponse.json(
         { success: false, data: null, error: 'Unauthorized — missing auth headers', meta: null },

@@ -22,7 +22,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { LEAD_STATUSES } from '@/lib/constants';
-import { cn } from '@/lib/utils';
 import { toast } from '@/hooks/use-toast';
 
 interface BulkActionsProps {
@@ -260,7 +259,7 @@ export function BulkActions({
             <AlertDialogTitle>Archive {count} Lead(s)?</AlertDialogTitle>
             <AlertDialogDescription>
               This will archive {count} lead(s). Archived leads can be
-              viewed by filtering by "Archived" status. This action can be
+              viewed by filtering by &ldquo;Archived&rdquo; status. This action can be
               reversed by changing the status back.
             </AlertDialogDescription>
           </AlertDialogHeader>

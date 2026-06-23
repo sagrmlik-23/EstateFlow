@@ -2,7 +2,6 @@
 
 import {
   Plus,
-  Home,
   Users,
   Phone,
   ArrowRight,

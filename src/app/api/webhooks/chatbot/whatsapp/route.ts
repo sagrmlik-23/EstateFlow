@@ -158,8 +158,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
   const mode = searchParams.get('hub.mode');
   const challenge = searchParams.get('hub.challenge');
 
-  const expectedToken = process.env.WATI_VERIFY_TOKEN ?? 'estateflow_wati_2024';
-
   if (mode === 'subscribe' && challenge) {
     console.log('[webhooks/chatbot/whatsapp] Webhook verified');
     return new NextResponse(challenge, { status: 200 });

@@ -24,11 +24,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
 interface AnalyticsSummary {
   totalCalls: number;
   connectedCalls: number;

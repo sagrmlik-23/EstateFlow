@@ -141,7 +141,6 @@ export async function calculateCommission(
   const tenantId = deal.tenant_id;
 
   // Look up agent-specific commission config
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: agentConfigs, error: configErr } = await (supabase
     .from('commission_configs') as any)
     .select('*')
@@ -156,7 +155,6 @@ export async function calculateCommission(
   }
 
   // Look up tenant-level commission rule
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: tenantRules, error: rulesErr } = await (supabase
     .from('commission_rules') as any)
     .select('*')
@@ -247,7 +245,6 @@ export async function getCommission(
 ): Promise<AgentCommission[]> {
   const supabase = getSupabase();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let query = (supabase.from('commissions') as any)
     .select('*')
     .eq('agent_id', agentId)
@@ -291,7 +288,6 @@ export async function getTeamCommissions(
   const startOfMonth = new Date(year, m - 1, 1).toISOString();
   const endOfMonth = new Date(year, m, 0, 23, 59, 59).toISOString();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase
     .from('commissions') as any)
     .select(
@@ -352,7 +348,6 @@ export async function createCommissionRule(
 ): Promise<CommissionRule> {
   const supabase = getSupabase();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data, error } = await (supabase.from('commission_rules') as any)
     .insert({
       tenant_id: tenantId,

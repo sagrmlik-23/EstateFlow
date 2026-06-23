@@ -11,7 +11,6 @@ import { buildPaginationParams } from '@/lib/types';
 import { MessageService } from '@/lib/communication/messageService';
 import { withRateLimit } from '@/lib/security/rateLimiter';
 import { auditLog } from '@/lib/security/auditLogger';
-import type { UserRole } from '@/types/auth';
 
 // ---------------------------------------------------------------------------
 // Zod schemas
@@ -61,7 +60,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // ── Auth ──────────────────────────────────────────────────────────────
     const userId = request.headers.get('x-user-id');
     const tenantId = request.headers.get('x-tenant-id');
-    const userRole = request.headers.get('x-user-role') as UserRole | null;
     const requestId = request.headers.get('x-session-id') || crypto.randomUUID();
 
     if (!userId || !tenantId) {
@@ -97,7 +95,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         { status: 400 },
       );
     }
-    const sortDir = searchParams.get('sort_dir') === 'asc' ? 'asc' : 'desc';
 
     // ── Build filters ──────────────────────────────────────────────────────
     const filters: Record<string, unknown> = { tenant_id: tenantId };
@@ -180,7 +177,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     // ── Auth ──────────────────────────────────────────────────────────────
     const userId = request.headers.get('x-user-id');
     const tenantId = request.headers.get('x-tenant-id');
-    const userRole = request.headers.get('x-user-role') as UserRole | null;
     const requestId = request.headers.get('x-session-id') || crypto.randomUUID();
 
     if (!userId || !tenantId) {

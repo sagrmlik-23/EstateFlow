@@ -11,7 +11,6 @@ import { z } from 'zod';
 import { HandoffService } from '@/lib/chatbot/handoffService';
 import { withRateLimit } from '@/lib/security/rateLimiter';
 import { auditLog } from '@/lib/security/auditLogger';
-import type { UserRole } from '@/types/auth';
 
 // ---------------------------------------------------------------------------
 // Zod schemas
@@ -47,7 +46,6 @@ export async function PATCH(
     // ── Auth headers ───────────────────────────────────────────────────────
     const userId = request.headers.get('x-user-id');
     const tenantId = request.headers.get('x-tenant-id');
-    const userRole = request.headers.get('x-user-role') as UserRole | null;
     const requestId = request.headers.get('x-session-id') || crypto.randomUUID();
 
     if (!userId || !tenantId) {

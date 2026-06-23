@@ -13,7 +13,7 @@ import {
   Line,
   ComposedChart,
 } from 'recharts';
-import { TrendingUp, RefreshCw, BarChart3 } from 'lucide-react';
+import { TrendingUp, BarChart3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 // ─── Types ────────────────────────────────────────────────────────────────
@@ -41,7 +41,6 @@ function generateTimelineData(
   days: number,
 ) {
   const data: { date: string; New: number; Contacted: number; Qualified: number; 'Closed Won': number; 'Closed Lost': number }[] = [];
-  const total = totalLeads || newLeads + contacted + qualified + closedWon + closedLost || 100;
 
   // Distribute values across days with some variation
   for (let i = days - 1; i >= 0; i--) {

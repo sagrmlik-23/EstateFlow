@@ -7,11 +7,10 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
 import { z } from 'zod';
-import { getCallById, queueCall } from '@/lib/ai/callQueue';
+import { getCallById } from '@/lib/ai/callQueue';
 import { AIVoiceOrchestrator } from '@/lib/ai/orchestrator';
 import { withRateLimit, extractClientIp } from '@/lib/security/rateLimiter';
 import { logCreate } from '@/lib/security/auditLogger';
-import type { UserRole } from '@/types/auth';
 
 // ---------------------------------------------------------------------------
 // Zod schemas
@@ -46,7 +45,6 @@ export async function GET(
     // ── Auth headers ───────────────────────────────────────────────────────
     const userId = request.headers.get('x-user-id');
     const tenantId = request.headers.get('x-tenant-id');
-    const userRole = request.headers.get('x-user-role') as UserRole | null;
     const requestId = request.headers.get('x-session-id') || crypto.randomUUID();
 
     if (!userId || !tenantId) {
@@ -128,13 +126,12 @@ export async function GET(
  */
 export async function POST(
   request: NextRequest,
-  { params }: RouteParams,
+  _params: RouteParams,
 ): Promise<NextResponse> {
   try {
     // ── Auth headers ───────────────────────────────────────────────────────
     const userId = request.headers.get('x-user-id');
     const tenantId = request.headers.get('x-tenant-id');
-    const userRole = request.headers.get('x-user-role') as UserRole | null;
     const requestId = request.headers.get('x-session-id') || crypto.randomUUID();
     const clientIp = extractClientIp(request);
     const userAgent = request.headers.get('user-agent') || null;

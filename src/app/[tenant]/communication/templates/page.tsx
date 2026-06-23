@@ -1,16 +1,14 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+
 import {
   Plus,
   RefreshCw,
   AlertCircle,
-  FileText,
   Search,
   LayoutTemplate,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -20,7 +18,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Toaster } from '@/components/ui/toaster';
 import {
@@ -28,7 +25,6 @@ import {
   TemplateCard,
   type MessageTemplate,
 } from '@/components/communication/TemplateEditor';
-import { timeAgo } from '@/lib/utils';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -41,13 +37,6 @@ const CHANNEL_OPTIONS = [
   { value: 'email', label: 'Email' },
 ];
 
-const CHANNEL_LABELS: Record<string, string> = {
-  whatsapp: 'WhatsApp',
-  sms: 'SMS',
-  email: 'Email',
-};
-
-// ---------------------------------------------------------------------------
 // Sample templates for demo
 // ---------------------------------------------------------------------------
 
@@ -165,8 +154,6 @@ export default function CommunicationTemplatesPage({
   const [editingTemplate, setEditingTemplate] = useState<MessageTemplate | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-
-  const router = useRouter();
 
   // Resolve params
   useEffect(() => {

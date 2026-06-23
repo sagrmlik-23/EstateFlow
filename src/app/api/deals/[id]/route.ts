@@ -246,7 +246,8 @@ export async function PATCH(
         () => updateDealStage(id, parsed.data.stage!),
       );
       // Apply remaining fields
-      const { stage: _stage, ...rest } = parsed.data;
+      const rest: Record<string, unknown> = { ...parsed.data };
+      delete rest.stage;
       if (Object.keys(rest).length > 0) {
         result = await withTenantContext(
           auth.tenantId, auth.userId, auth.role,

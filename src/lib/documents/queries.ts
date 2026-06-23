@@ -174,11 +174,9 @@ export function getDocumentTemplates(): DocumentTemplate[] {
 // 2. createDocument — Insert a document record
 // ---------------------------------------------------------------------------
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function createDocument(tenantId: string, data: CreateDocumentInput, uploadedBy: string): Promise<DocumentRow> {
   const supabase = getDb();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const insertData: Record<string, any> = {
     tenant_id: tenantId,
     name: data.name || data.title || 'Untitled Document',
@@ -192,7 +190,6 @@ export async function createDocument(tenantId: string, data: CreateDocumentInput
     uploaded_by: uploadedBy,
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: result, error } = await (supabase.from('documents') as any)
     .insert(insertData)
     .select()
@@ -285,7 +282,6 @@ export async function getDocumentById(docId: string): Promise<DocumentRow | null
 export async function updateDocument(docId: string, data: UpdateDocumentInput): Promise<DocumentRow> {
   const supabase = getDb();
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const updateData: Record<string, any> = {};
   if (data.name !== undefined) updateData.name = data.name;
   if (data.category !== undefined) updateData.category = data.category;
@@ -293,7 +289,6 @@ export async function updateDocument(docId: string, data: UpdateDocumentInput): 
   if (data.file_size !== undefined) updateData.file_size = data.file_size;
   if (data.storage_url !== undefined) updateData.storage_url = data.storage_url;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: result, error } = await (supabase.from('documents') as any)
     .update(updateData)
     .eq('id', docId)

@@ -21,8 +21,7 @@ import {
   buildFollowUpScript,
   buildReEngagementScript,
 } from './scriptBuilder';
-import type { LeadVariables } from './scriptBuilder';
-import { AI_CALL_STATUSES, AI_AGENT_PURPOSES } from '@/lib/constants';
+import { AI_AGENT_PURPOSES } from '@/lib/constants';
 
 // ---------------------------------------------------------------------------
 // Supabase client (lazy init)
@@ -131,7 +130,6 @@ export class AIVoiceOrchestrator {
     const supabase = getDb();
 
     // ── Fetch lead with tenant info ────────────────────────────────────────
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: lead, error: leadErr } = await (supabase.from('leads') as any)
       .select('*')
       .eq('id', leadId)
@@ -145,7 +143,6 @@ export class AIVoiceOrchestrator {
     const leadRecord = lead as LeadRecord;
 
     // ── Fetch tenant ───────────────────────────────────────────────────────
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: tenant, error: tenantErr } = await (supabase.from('tenants') as any)
       .select('*')
       .eq('id', leadRecord.tenant_id)
@@ -264,7 +261,6 @@ export class AIVoiceOrchestrator {
     const supabase = getDb();
 
     // Fetch all active AI agents for this tenant
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: agents, error } = await (supabase.from('ai_agents') as any)
       .select('*')
       .eq('tenant_id', tenant.id)
@@ -389,7 +385,6 @@ export class AIVoiceOrchestrator {
     const supabase = getDb();
 
     // Fetch lead
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: lead, error: leadErr } = await (supabase.from('leads') as any)
       .select('*')
       .eq('id', leadId)
@@ -399,7 +394,6 @@ export class AIVoiceOrchestrator {
     const leadRecord = lead as LeadRecord;
 
     // Fetch last call for this lead
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: lastCall } = await (supabase.from('ai_call_queue') as any)
       .select('*')
       .eq('lead_id', leadId)
@@ -428,7 +422,6 @@ export class AIVoiceOrchestrator {
     }
 
     // Build follow-up script
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: tenant } = await (supabase.from('tenants') as any)
       .select('*')
       .eq('id', leadRecord.tenant_id)
@@ -470,7 +463,6 @@ export class AIVoiceOrchestrator {
   async processReEngagement(leadId: string): Promise<{ callId: string } | null> {
     const supabase = getDb();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: lead, error: leadErr } = await (supabase.from('leads') as any)
       .select('*')
       .eq('id', leadId)
@@ -487,7 +479,6 @@ export class AIVoiceOrchestrator {
       if (daysSinceUpdate < 30) return null; // Not stale enough
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: tenant } = await (supabase.from('tenants') as any)
       .select('*')
       .eq('id', leadRecord.tenant_id)
@@ -530,7 +521,6 @@ export class AIVoiceOrchestrator {
     const supabase = getDb();
 
     // Fetch lead to get tenant id
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { data: lead, error: leadErr } = await (supabase.from('leads') as any)
       .select('id, tenant_id, full_name')
       .eq('id', leadId)
@@ -542,7 +532,6 @@ export class AIVoiceOrchestrator {
     }
 
     // Create a high-priority task for the lead
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await (supabase.from('tasks') as any).insert({
       tenant_id: lead.tenant_id,
       lead_id: leadId,

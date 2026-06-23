@@ -25,7 +25,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Toaster } from '@/components/ui/toaster';
 import CallTranscript from '@/components/ai/CallTranscript';
-import { formatDateTime, formatDate } from '@/lib/utils';
+import { formatDateTime } from '@/lib/utils';
 import type { TranscriptEntry } from '@/types/ai';
 
 // ---------------------------------------------------------------------------

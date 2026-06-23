@@ -139,7 +139,7 @@ function ActivityFeedSkeleton() {
 
 // ─── RecentActivity Component ─────────────────────────────────────────────
 
-export function RecentActivity({ initialActivities, tenantId }: RecentActivityProps) {
+export function RecentActivity({ initialActivities, tenantId: _ }: RecentActivityProps) {
   const [activities, setActivities] = useState<ActivityEntry[]>(initialActivities);
   const [isLoading, setIsLoading] = useState(false);
   const [hasMore, setHasMore] = useState(initialActivities.length >= 10);

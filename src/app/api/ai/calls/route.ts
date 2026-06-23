@@ -5,11 +5,9 @@
 // ============================================================================
 
 import { NextResponse, type NextRequest } from 'next/server';
-import { z } from 'zod';
 import { buildPaginationParams } from '@/lib/types';
-import { getCallHistory, getCallById } from '@/lib/ai/callQueue';
-import { withRateLimit, extractClientIp } from '@/lib/security/rateLimiter';
-import type { UserRole } from '@/types/auth';
+import { getCallHistory } from '@/lib/ai/callQueue';
+import { withRateLimit } from '@/lib/security/rateLimiter';
 
 // ---------------------------------------------------------------------------
 // Allowed filter values
@@ -45,7 +43,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     // ── Auth headers ───────────────────────────────────────────────────────
     const userId = request.headers.get('x-user-id');
     const tenantId = request.headers.get('x-tenant-id');
-    const userRole = request.headers.get('x-user-role') as UserRole | null;
     const requestId = request.headers.get('x-session-id') || crypto.randomUUID();
 
     if (!userId || !tenantId) {

@@ -7,7 +7,6 @@ import {
   AlertCircle,
   CheckCircle2,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -28,8 +27,6 @@ import type {
   CreateAgentInput,
   ScriptTemplateSet,
   AgentBehavior,
-  TransferToHumanConfig,
-  OffersConfig,
 } from '@/types/ai';
 
 // ---------------------------------------------------------------------------

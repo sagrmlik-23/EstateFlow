@@ -10,7 +10,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import pino from 'pino';
 
-import { getProvider } from '@/lib/ai/providerFactory';
 import { withRateLimit } from '@/lib/security/rateLimiter';
 import { auditLog } from '@/lib/security/auditLogger';
 import { logActivity } from '@/lib/activity/queries';
@@ -19,7 +18,6 @@ import type {
   RetellAIWebhookPayload,
   VapiWebhookPayload,
   AIProviderName,
-  AICallStatus,
   CallOutcome,
 } from '@/types/ai';
 

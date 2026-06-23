@@ -74,7 +74,6 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     }
 
     // ── Process calls: init via telephony provider ────────────────────────
-    const providerType = process.env.AI_CALL_PROVIDER || 'twilio';
     const results = {
       processed: 0,
       skipped: 0,
@@ -178,7 +177,7 @@ async function initiateProviderCall(
 /**
  * Mock provider — generates a fake call ID for development.
  */
-async function initiateMockCall(phone: string): Promise<string> {
+async function initiateMockCall(_phone: string): Promise<string> {
   // Simulate provider latency
   await new Promise((resolve) => setTimeout(resolve, 100));
   return `mock-call-${crypto.randomUUID().slice(0, 8)}`;
@@ -189,9 +188,9 @@ async function initiateMockCall(phone: string): Promise<string> {
  */
 async function initiateTwilioCall(
   phone: string,
-  script: string,
-  voice?: string,
-  language?: string,
+  _script: string,
+  _voice?: string,
+  _language?: string,
 ): Promise<string | null> {
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const authToken = process.env.TWILIO_AUTH_TOKEN;
@@ -231,8 +230,7 @@ async function initiateTwilioCall(
       return null;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data: any = await response.json();
+    const data = (await response.json()) as { sid?: string };
     return data.sid || null;
   } catch (err) {
     console.error('[cron] Twilio call failed:', err);
@@ -245,9 +243,9 @@ async function initiateTwilioCall(
  */
 async function initiatePlivoCall(
   phone: string,
-  script: string,
-  voice?: string,
-  language?: string,
+  _script: string,
+  _voice?: string,
+  _language?: string,
 ): Promise<string | null> {
   const authId = process.env.PLIVO_AUTH_ID;
   const authToken = process.env.PLIVO_AUTH_TOKEN;
@@ -287,8 +285,7 @@ async function initiatePlivoCall(
       return null;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data: any = await response.json();
+    const data = (await response.json()) as { request_uuid?: string };
     return data.request_uuid || null;
   } catch (err) {
     console.error('[cron] Plivo call failed:', err);

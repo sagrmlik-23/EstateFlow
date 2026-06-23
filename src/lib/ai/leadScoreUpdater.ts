@@ -73,7 +73,6 @@ export async function updateLeadScoreFromCall(
   const supabase = getDb();
 
   // Fetch current lead data
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: lead, error: fetchError } = await (supabase
     .from('leads') as any)
     .select('id, ai_score, status')
@@ -118,7 +117,6 @@ export async function updateLeadScoreFromCall(
   }
 
   // Update the lead
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const updateData: Record<string, any> = {
     ai_score: newScore,
     updated_at: new Date().toISOString(),
@@ -128,7 +126,6 @@ export async function updateLeadScoreFromCall(
     updateData.status = newStatus;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error: updateError } = await (supabase.from('leads') as any)
     .update(updateData)
     .eq('id', leadId);
@@ -166,7 +163,6 @@ export async function appendCallNotes(
   const supabase = getDb();
 
   // Fetch current notes
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: lead, error: fetchError } = await (supabase
     .from('leads') as any)
     .select('id, notes')
@@ -195,7 +191,6 @@ export async function appendCallNotes(
     ? existingNotes + '\n' + callEntry
     : callEntry;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error: updateError } = await (supabase.from('leads') as any)
     .update({
       notes: updatedNotes,
@@ -225,7 +220,6 @@ export async function updateAgentConversionRate(
   const supabase = getDb();
 
   // Get total completed calls for this agent
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: callStats, error: callError } = await (supabase
     .from('ai_call_queue') as any)
     .select('id, outcome', { count: 'exact' })
@@ -246,7 +240,6 @@ export async function updateAgentConversionRate(
   ).length;
 
   // Get the agent's total connected calls
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: agentData, error: agentError } = await (supabase
     .from('ai_agents') as any)
     .select('total_calls_made, total_calls_connected')
@@ -268,7 +261,6 @@ export async function updateAgentConversionRate(
       : 0;
 
   // Update agent stats
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { error: updateError } = await (supabase.from('ai_agents') as any)
     .update({
       total_calls_made: totalCallsMade,

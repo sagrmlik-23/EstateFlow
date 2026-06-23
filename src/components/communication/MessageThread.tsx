@@ -8,10 +8,9 @@ import {
   AlertTriangle,
   ChevronDown,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { formatDateTime, timeAgo } from '@/lib/utils';
+import { cn, formatDateTime } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import type { MessageRecord, MessageChannel, MessageDirection, MessageStatus } from '@/types/communication';
+import type { MessageRecord, MessageChannel, MessageStatus } from '@/types/communication';
 
 // ---------------------------------------------------------------------------
 // Channel icons & labels
