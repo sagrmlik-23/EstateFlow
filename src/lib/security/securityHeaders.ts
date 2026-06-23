@@ -27,7 +27,9 @@ import type { SecurityHeaders } from '@/types/security';
  */
 const BASE_CSP_DIRECTIVES: Record<string, string> = {
   "default-src": "'self'",
-  "script-src": "'self' 'nonce-{nonce}'",
+  "script-src": process.env.NODE_ENV === 'development'
+    ? "'self' 'unsafe-inline' 'unsafe-eval'"
+    : "'self' 'nonce-{nonce}'",
   "style-src": "'self' 'unsafe-inline'",
   "img-src": "'self' data: blob: https:",
   "font-src": "'self' data:",

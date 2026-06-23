@@ -159,33 +159,35 @@ $$;
 -- ############################################################################
 
 -- Recreate FK references that pointed to leads
+-- Note: leads is partitioned by HASH(id) with PK (id, tenant_id),
+-- so FKs must reference the composite key
 ALTER TABLE ai_call_queue
     ADD CONSTRAINT fk_ai_call_queue_lead
-    FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE SET NULL;
+    FOREIGN KEY (lead_id, tenant_id) REFERENCES leads(id, tenant_id) ON DELETE SET NULL;
 
 ALTER TABLE calls
     ADD CONSTRAINT fk_calls_lead
-    FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE SET NULL;
+    FOREIGN KEY (lead_id, tenant_id) REFERENCES leads(id, tenant_id) ON DELETE SET NULL;
 
 ALTER TABLE messages
     ADD CONSTRAINT fk_messages_lead
-    FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE SET NULL;
+    FOREIGN KEY (lead_id, tenant_id) REFERENCES leads(id, tenant_id) ON DELETE SET NULL;
 
 ALTER TABLE deals
     ADD CONSTRAINT fk_deals_lead
-    FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE SET NULL;
+    FOREIGN KEY (lead_id, tenant_id) REFERENCES leads(id, tenant_id) ON DELETE SET NULL;
 
 ALTER TABLE tasks
     ADD CONSTRAINT fk_tasks_lead
-    FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE SET NULL;
+    FOREIGN KEY (lead_id, tenant_id) REFERENCES leads(id, tenant_id) ON DELETE SET NULL;
 
 ALTER TABLE documents
     ADD CONSTRAINT fk_documents_lead
-    FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE SET NULL;
+    FOREIGN KEY (lead_id, tenant_id) REFERENCES leads(id, tenant_id) ON DELETE SET NULL;
 
 ALTER TABLE site_visits
     ADD CONSTRAINT fk_site_visits_lead
-    FOREIGN KEY (lead_id) REFERENCES leads(id) ON DELETE SET NULL;
+    FOREIGN KEY (lead_id, tenant_id) REFERENCES leads(id, tenant_id) ON DELETE SET NULL;
 
 -- Recreate FK references that pointed to audit_logs (none, audit_logs has no inbound FKs)
 

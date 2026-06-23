@@ -33,10 +33,15 @@ let redisClient: Redis | null = null;
 function getRedis(): Redis | null {
   if (redisClient) return redisClient;
 
-  const host = process.env.REDIS_HOST || 'localhost';
+  const host = process.env.REDIS_HOST || '';
   const port = parseInt(process.env.REDIS_PORT || '6379', 10);
   const password = process.env.REDIS_PASSWORD || undefined;
   const url = process.env.REDIS_URL;
+
+  // No Redis configured — skip silently
+  if (!url && !host) {
+    return null;
+  }
 
   try {
     if (url) {

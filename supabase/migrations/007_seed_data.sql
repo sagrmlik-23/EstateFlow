@@ -425,7 +425,7 @@ INSERT INTO properties (
         '00000000-0000-0000-0000-000000000205',
         '00000000-0000-0000-0000-000000000010',
         'Premium Residential Plot — Noida Extension',
-        'Corner plot in Noida Extension's premium sector. Ideal for building your dream home. All utilities connected. Facing east — auspicious.',
+        'Corner plot in Noida Extension''s premium sector. Ideal for building your dream home. All utilities connected. Facing east — auspicious.',
         4500000,
         1500,
         0,

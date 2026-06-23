@@ -209,7 +209,7 @@ BEGIN
         created_at
     ) VALUES (
         v_tenant_id,
-        COALESCE(v_user_id, CASE WHEN TG_OP = 'DELETE' THEN OLD.updated_by ELSE NEW.updated_by END),
+        v_user_id,
         v_action,
         v_entity_type,
         v_entity_id,

@@ -25,6 +25,11 @@ dist/
 .DS_Store
 Thumbs.db
 
+# ─── Test Artifacts ────────────────────────────────────────────
+test-*.mjs
+test-results/
+test-screenshots.mjs
+
 # ─── Debug Logs ─────────────────────────────────────────────────
 npm-debug.log*
 yarn-debug.log*

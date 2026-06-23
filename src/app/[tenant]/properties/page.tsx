@@ -8,6 +8,7 @@ import PropertyGrid from '@/components/properties/PropertyGrid';
 import type { PropertyRow } from '@/lib/properties/queries';
 import { getProperties } from '@/lib/properties/queries';
 import { buildPaginationParams } from '@/lib/types';
+import { resolveTenantId } from '@/lib/routing/resolveTenantId';
 
 // ---------------------------------------------------------------------------
 // Types for search params
@@ -136,6 +137,7 @@ async function PropertyListContent({
   tenant: string;
   searchParams: Record<string, string | undefined>;
 }) {
+  const tenantId = await resolveTenantId(tenant);
   const page = parseInt(searchParams.page ?? '1', 10);
   const pagination = buildPaginationParams(page, 20);
 
@@ -148,7 +150,7 @@ async function PropertyListContent({
   if (searchParams.bedrooms) filters.bedrooms = parseInt(searchParams.bedrooms, 10);
   if (searchParams.location) filters.location = searchParams.location;
 
-  const result = await getProperties(tenant, filters, pagination);
+  const result = await getProperties(tenantId, filters, pagination);
 
   if (!result.success) {
     return <ErrorState message={result.error ?? 'An unexpected error occurred'} />;

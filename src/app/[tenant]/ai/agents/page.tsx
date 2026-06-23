@@ -28,12 +28,19 @@ import type { ApiResponse } from '@/lib/types';
 // ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
+// Known tenant slug → UUID mapping (dev mode)
+const TENANT_UUID_MAP: Record<string, string> = {
+  demo: '00000000-0000-0000-0000-000000000010',
+  estateflow: '00000000-0000-0000-0000-000000000001',
+};
+
 export default function AIAgentsPage({
   params,
 }: {
   params: Promise<{ tenant: string }>;
 }) {
   const [tenant, setTenant] = useState('');
+  const [tenantId, setTenantId] = useState('');
   const [agents, setAgents] = useState<ClientAIAgent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +52,10 @@ export default function AIAgentsPage({
 
   // Resolve params
   useEffect(() => {
-    params.then((p) => setTenant(p.tenant));
+    params.then((p) => {
+      setTenant(p.tenant);
+      setTenantId(TENANT_UUID_MAP[p.tenant] || p.tenant);
+    });
   }, [params]);
 
   // -------------------------------------------------------------------------
@@ -57,10 +67,10 @@ export default function AIAgentsPage({
     setError(null);
 
     try {
-      const res = await fetch(`/api/ai/agents?tenantId=${tenant}`, {
+      const res = await fetch(`/api/ai/agents?tenantId=${tenantId}`, {
         headers: {
           'x-user-id': 'current-user',
-          'x-tenant-id': tenant,
+          'x-tenant-id': tenantId,
           'x-user-role': 'org_admin',
         },
       });

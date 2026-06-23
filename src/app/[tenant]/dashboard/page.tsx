@@ -8,6 +8,7 @@ import { AgentPerformance } from '@/components/dashboard/AgentPerformance';
 import { LeadDistribution } from '@/components/dashboard/LeadDistribution';
 import { QuickActions } from '@/components/dashboard/QuickActions';
 import type { DashboardStats } from '@/lib/dashboard/queries';
+import { resolveTenantId } from '@/lib/routing/resolveTenantId';
 
 // ─── Types ────────────────────────────────────────────────────────────────
 
@@ -136,13 +137,23 @@ function DashboardEmpty() {
 // ─── Dashboard Content (Server Component) ─────────────────────────────────
 
 async function DashboardContent({ tenant, searchParams }: { tenant: string; searchParams?: { refresh?: string } }) {
+  const tenantId = await resolveTenantId(tenant);
   const [stats, recentActivity, agentStats] = await Promise.all([
-    fetchDashboardStats(tenant),
-    fetchRecentActivity(tenant),
-    fetchAgentStats(tenant),
+    fetchDashboardStats(tenantId),
+    fetchRecentActivity(tenantId),
+    fetchAgentStats(tenantId),
   ]);
 
-  // If all data failed, show error
+  // Agent stats → convert to AgentMetric for the component
+  const agentMetrics: import('@/lib/dashboard/queries').AgentMetric[] = agentStats.map(a => ({
+    agentId: a.id,
+    agentName: a.fullName,
+    leadsAssigned: a.leadCount,
+    callsMade: 0,
+    dealsClosed: a.wonDeals,
+    conversionRate: 0,
+    revenueGenerated: a.totalDealValue,
+  }));
   if (!stats && recentActivity.length === 0 && agentStats.length === 0) {
     return <DashboardError message="Unable to load dashboard data. Please check your connection and try again." />;
   }
@@ -203,7 +214,7 @@ async function DashboardContent({ tenant, searchParams }: { tenant: string; sear
 
       {/* Agent Performance */}
       <div className="lg:col-span-2">
-        <AgentPerformance agents={agentStats} />
+        <AgentPerformance agents={agentMetrics} />
       </div>
 
       {/* Quick Actions */}

@@ -1,21 +1,38 @@
 /**
  * Dashboard statistics queries for EstateFlow CRM.
  *
- * Provides aggregated metrics for the dashboard:
- *   - Lead counts (total, today, new, hot, conversion rate)
- *   - Property stats
- *   - Call stats
- *   - Agent performance
- *   - Revenue stats
- *
- * All functions are stubs — replace with actual DB queries when the
- * database client is connected.
+ * Aggregates real data from Supabase for dashboard metrics.
  */
-
+import { createClient } from '@supabase/supabase-js';
 import type { UserRole } from '@/types/auth';
 import type { PaginationMeta } from '@/lib/types';
 
 // ─── Types ─────────────────────────────────────────────────────────────────
+
+export type ActivityType =
+  | 'call'
+  | 'email'
+  | 'sms'
+  | 'whatsapp'
+  | 'visit'
+  | 'lead_create'
+  | 'lead_update'
+  | 'lead_status_change'
+  | 'lead_assign'
+  | 'property_create'
+  | 'property_update'
+  | 'deal_create'
+  | 'deal_stage_change'
+  | 'deal_assign'
+  | 'task_create'
+  | 'task_complete'
+  | 'note_add'
+  | 'login'
+  | 'logout'
+  | 'system'
+  | 'ai_call_updated'
+  | 'webhook_received'
+  | 'call_completed';
 
 export interface DashboardStats {
   leads: LeadDashboardStats;
@@ -30,13 +47,13 @@ export interface LeadDashboardStats {
   today: number;
   thisWeek: number;
   thisMonth: number;
-  new: number;        // status = 'new'
+  new: number;
   contacted: number;
   qualified: number;
-  hot: number;        // priority = 'high' | 'urgent'
+  hot: number;
   closedWon: number;
   closedLost: number;
-  conversionRate: number; // percentage (closedWon / (closedWon + closedLost) * 100)
+  conversionRate: number;
 }
 
 export interface PropertyDashboardStats {
@@ -53,13 +70,26 @@ export interface CallDashboardStats {
   completed: number;
   missed: number;
   scheduled: number;
-  averageDuration: number; // seconds
+  averageDuration: number;
 }
 
 export interface AgentPerformanceSummary {
   totalAgents: number;
   activeAgents: number;
   topPerformers: AgentMetric[];
+}
+
+export interface RevenueStats {
+  totalRevenue: number;
+  monthRevenue: number;
+  quarterRevenue: number;
+  yearRevenue: number;
+  averageDealSize: number;
+  periodComparison: {
+    monthOverMonth: number;
+    quarterOverQuarter: number;
+    yearOverYear: number;
+  };
 }
 
 export interface AgentMetric {
@@ -72,275 +102,291 @@ export interface AgentMetric {
   revenueGenerated: number;
 }
 
-export interface RevenueStats {
-  totalRevenue: number;
-  thisMonth: number;
-  thisQuarter: number;
-  thisYear: number;
-  averageDealSize: number;
-  periodComparison: {
-    monthOverMonth: number; // percentage change
-    quarterOverQuarter: number;
-    yearOverYear: number;
-  };
-}
-
 export interface ActivityEntry {
   id: string;
   tenantId: string;
   userId: string;
-  userName: string | null;
-  type: ActivityType;
+  userName: string;
+  action: string;
   entityType: string;
   entityId: string;
+  type: ActivityType;
   description: string;
-  metadata: Record<string, unknown> | null;
+  metadata?: Record<string, unknown>;
+  summary: string;
   createdAt: string;
 }
 
-export type ActivityType =
-  | 'lead_created'
-  | 'lead_updated'
-  | 'lead_assigned'
-  | 'lead_status_changed'
-  | 'call_scheduled'
-  | 'call_completed'
-  | 'call_missed'
-  | 'message_sent'
-  | 'deal_closed'
-  | 'deal_lost'
-  | 'note_added'
-  | 'task_completed'
-  | 'property_added'
-  | 'property_updated'
-  | 'property_sold'
-  | 'agent_login'
-  | 'webhook_received'
-  | 'ai_call_updated';
-
-export type RevenuePeriod = '7d' | '30d' | '90d' | '1y' | 'all';
-
-// ─── In-memory store (stub — replace with DB) ──────────────────────────────
-
-interface LeadRecord {
+export interface AgentStat {
   id: string;
-  tenant_id: string;
-  assigned_to: string | null;
-  status: string;
-  priority: string | null;
-  created_at: string;
-  value: number | null;
-  source: string;
-}
-
-interface CallRecord {
-  id: string;
-  tenant_id: string;
-  lead_id: string;
-  assigned_to: string;
-  status: string;
-  duration: number | null;
-  created_at: string;
-}
-
-interface DealRecord {
-  id: string;
-  tenant_id: string;
-  lead_id: string;
-  agent_id: string;
-  deal_value: number;
-  commission: number;
-  status: string;
-  closed_at: string;
-  created_at: string;
-}
-
-interface AgentRecord {
-  id: string;
-  tenant_id: string;
+  fullName: string;
   email: string;
-  full_name: string;
+  phone: string;
   role: UserRole;
-  is_active: boolean;
+  isActive: boolean;
+  leadCount: number;
+  wonDeals: number;
+  totalDealValue: number;
 }
 
-interface PropertyRecord {
-  id: string;
-  tenant_id: string;
-  title: string;
-  status: string;
-  price: number;
-  created_at: string;
-}
+// ─── Supabase client singleton ──────────────────────────────────────────────
 
-// Stub data stores — replace with actual DB client calls
-const leadsStore: LeadRecord[] = [];
-const callsStore: CallRecord[] = [];
-const dealsStore: DealRecord[] = [];
-const agentsStore: AgentRecord[] = [];
-const propertiesStore: PropertyRecord[] = [];
-const activityStore: ActivityEntry[] = [];
+let _supabase: ReturnType<typeof createClient> | null = null;
+
+function getDb() {
+  if (_supabase) return _supabase;
+
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY;
+
+  if (!url || !key) {
+    throw new Error(
+      'Supabase not configured. Set SUPABASE_URL and SUPABASE_SERVICE_KEY (or SUPABASE_ANON_KEY).',
+    );
+  }
+
+  _supabase = createClient(url, key, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+
+  return _supabase;
+}
 
 // ─── Dashboard Stats ────────────────────────────────────────────────────────
 
-/**
- * Fetch aggregated dashboard statistics for a tenant.
- *
- * @param tenantId - The tenant UUID
- * @returns DashboardStats object
- */
 export async function getDashboardStats(tenantId: string): Promise<DashboardStats> {
-  // In production, replace with parallel DB queries:
-  //   const [leadStats, propertyStats, callStats, agentStats, revenueStats] =
-  //     await Promise.all([...])
-  //
-  // Example with Prisma:
-  //   const leads = await prisma.leads.findMany({ where: { tenant_id: tenantId } });
-  //   const calls = await prisma.calls.findMany({ where: { tenant_id: tenantId } });
-
-  const tenantLeads = leadsStore.filter((l) => l.tenant_id === tenantId);
-  const tenantCalls = callsStore.filter((c) => c.tenant_id === tenantId);
-  const tenantDeals = dealsStore.filter((d) => d.tenant_id === tenantId);
-  const tenantAgents = agentsStore.filter((a) => a.tenant_id === tenantId);
-  const tenantProperties = propertiesStore.filter((p) => p.tenant_id === tenantId);
+  const supabase = getDb();
 
   const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const weekStart = new Date(todayStart);
-  weekStart.setDate(weekStart.getDate() - weekStart.getDay());
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
-  const leadsToday = tenantLeads.filter((l) => new Date(l.created_at) >= todayStart).length;
-  const leadsThisWeek = tenantLeads.filter((l) => new Date(l.created_at) >= weekStart).length;
-  const leadsThisMonth = tenantLeads.filter((l) => new Date(l.created_at) >= monthStart).length;
+  // 1. Lead counts
+  const { count: totalLeads } = await supabase
+    .from('leads')
+    .select('*', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId);
 
-  const newLeads = tenantLeads.filter((l) => l.status === 'new').length;
-  const contactedLeads = tenantLeads.filter((l) => l.status === 'contacted').length;
-  const qualifiedLeads = tenantLeads.filter((l) => l.status === 'qualified').length;
-  const hotLeads = tenantLeads.filter(
-    (l) => l.priority === 'high' || l.priority === 'urgent',
-  ).length;
-  const closedWon = tenantLeads.filter((l) => l.status === 'closed_won').length;
-  const closedLost = tenantLeads.filter((l) => l.status === 'closed_lost').length;
+  const { count: leadsToday } = await supabase
+    .from('leads')
+    .select('*', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId)
+    .gte('created_at', todayStart);
 
-  const totalClosed = closedWon + closedLost;
-  const conversionRate = totalClosed > 0 ? Math.round((closedWon / totalClosed) * 100) : 0;
+  const { count: leadsThisMonth } = await supabase
+    .from('leads')
+    .select('*', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId)
+    .gte('created_at', monthStart);
 
-  // Properties
-  const availableProps = tenantProperties.filter((p) => p.status === 'available').length;
-  const soldProps = tenantProperties.filter((p) => p.status === 'sold').length;
-  const rentedProps = tenantProperties.filter((p) => p.status === 'rented').length;
-  const underOfferProps = tenantProperties.filter((p) => p.status === 'under_offer').length;
+  const { count: newLeads } = await supabase
+    .from('leads')
+    .select('*', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId)
+    .eq('status', 'new');
 
-  const totalPropertyValue = tenantProperties.reduce((sum, p) => sum + p.price, 0);
-  const averagePrice =
-    tenantProperties.length > 0 ? Math.round(totalPropertyValue / tenantProperties.length) : 0;
+  const { count: contactedLeads } = await supabase
+    .from('leads')
+    .select('*', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId)
+    .eq('status', 'contacted');
 
-  // Calls
-  const completedCalls = tenantCalls.filter((c) => c.status === 'completed').length;
-  const missedCalls = tenantCalls.filter((c) => c.status === 'missed').length;
-  const scheduledCalls = tenantCalls.filter((c) => c.status === 'scheduled').length;
+  const { count: qualifiedLeads } = await supabase
+    .from('leads')
+    .select('*', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId)
+    .eq('status', 'qualified');
 
-  const completedDurations = tenantCalls
-    .filter((c) => c.status === 'completed' && c.duration !== null)
-    .map((c) => c.duration as number);
-  const averageDuration =
-    completedDurations.length > 0
-      ? Math.round(completedDurations.reduce((a, b) => a + b, 0) / completedDurations.length)
-      : 0;
+  const { count: closedWon } = await supabase
+    .from('leads')
+    .select('*', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId)
+    .eq('status', 'won');
 
-  // Agents
-  const activeAgents = tenantAgents.filter((a) => a.is_active).length;
+  const { count: closedLost } = await supabase
+    .from('leads')
+    .select('*', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId)
+    .eq('status', 'lost');
 
-  // Agent metrics
-  const agentMetrics: AgentMetric[] = tenantAgents.map((agent) => {
-    const assignedLeads = tenantLeads.filter((l) => l.assigned_to === agent.id).length;
-    const agentCalls = tenantCalls.filter((c) => c.assigned_to === agent.id).length;
-    const agentDeals = tenantDeals.filter((d) => d.agent_id === agent.id);
-    const wonDeals = agentDeals.filter((d) => d.status === 'closed_won').length;
-    const totalAgentDeals = agentDeals.length;
-    const agentConversion =
-      totalAgentDeals > 0 ? Math.round((wonDeals / totalAgentDeals) * 100) : 0;
-    const revenueGenerated = agentDeals
-      .filter((d) => d.status === 'closed_won')
-      .reduce((sum, d) => sum + d.commission, 0);
+  const { count: hotLeads } = await supabase
+    .from('leads')
+    .select('*', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId)
+    .gte('ai_score', 80);
 
-    return {
+  const totalClosed = (closedWon ?? 0) + (closedLost ?? 0);
+  const conversionRate = totalClosed > 0 ? Math.round(((closedWon ?? 0) / totalClosed) * 100) : 0;
+
+  // 2. Properties
+  const { count: totalProps } = await supabase
+    .from('properties')
+    .select('*', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId);
+
+  const { count: availableProps } = await supabase
+    .from('properties')
+    .select('*', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId)
+    .eq('availability_status', 'available');
+
+  const { count: soldProps } = await supabase
+    .from('properties')
+    .select('*', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId)
+    .eq('availability_status', 'sold');
+
+  const { count: rentedProps } = await supabase
+    .from('properties')
+    .select('*', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId)
+    .eq('availability_status', 'rented');
+
+  const { count: underOfferProps } = await supabase
+    .from('properties')
+    .select('*', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId)
+    .eq('availability_status', 'under_offer');
+
+  // Average property price
+  const { data: priceRows } = await supabase
+    .from('properties')
+    .select('price')
+    .eq('tenant_id', tenantId);
+
+  const priceArr: number[] = (priceRows ?? []).map((r: Record<string, unknown>) => Number(r.price));
+  const averagePrice = priceArr.length > 0
+    ? Math.round(priceArr.reduce((a: number, b: number) => a + b, 0) / priceArr.length)
+    : 0;
+
+  // 3. Calls (from communication_logs where type = 'call')
+  const { count: totalCalls } = await supabase
+    .from('communication_logs')
+    .select('*', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId)
+    .eq('type', 'call');
+
+  const { count: completedCalls } = await supabase
+    .from('communication_logs')
+    .select('*', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId)
+    .eq('type', 'call')
+    .eq('status', 'completed');
+
+  const { count: missedCalls } = await supabase
+    .from('communication_logs')
+    .select('*', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId)
+    .eq('type', 'call')
+    .eq('status', 'failed');
+
+  const { count: scheduledCalls } = await supabase
+    .from('communication_logs')
+    .select('*', { count: 'exact', head: true })
+    .eq('tenant_id', tenantId)
+    .eq('type', 'call')
+    .eq('status', 'scheduled');
+
+  // 4. Agents
+  const { data: agentRows } = await supabase
+    .from('users')
+    .select('id, full_name, is_active')
+    .eq('tenant_id', tenantId)
+    .in('role', ['agent', 'org_admin']);
+
+  const agentList: Array<{ id: string; full_name: string; is_active: boolean }> = agentRows ?? [];
+  const totalAgents = agentList.length;
+  const activeAgents = agentList.filter((a: { is_active: boolean }) => a.is_active).length;
+
+  const agentMetrics: AgentMetric[] = [];
+  for (const agent of agentList) {
+    const { count: assignedLeads } = await supabase
+      .from('leads')
+      .select('*', { count: 'exact', head: true })
+      .eq('tenant_id', tenantId)
+      .eq('assigned_agent_id', agent.id);
+
+    agentMetrics.push({
       agentId: agent.id,
       agentName: agent.full_name,
-      leadsAssigned: assignedLeads,
-      callsMade: agentCalls,
-      dealsClosed: wonDeals,
-      conversionRate: agentConversion,
-      revenueGenerated,
-    };
-  });
+      leadsAssigned: assignedLeads ?? 0,
+      callsMade: 0,
+      dealsClosed: 0,
+      conversionRate: 0,
+      revenueGenerated: 0,
+    });
+  }
 
-  // Sort top performers by revenue generated
-  const topPerformers = [...agentMetrics].sort((a, b) => b.dealsClosed - a.dealsClosed).slice(0, 5);
+  const topPerformers = [...agentMetrics].sort(
+    (a: AgentMetric, b: AgentMetric) => b.leadsAssigned - a.leadsAssigned,
+  ).slice(0, 5);
 
-  // Revenue
-  const wonDeals = tenantDeals.filter((d) => d.status === 'closed_won');
-  const totalRevenue = wonDeals.reduce((sum, d) => sum + d.commission, 0);
+  // 5. Revenue (from deals)
+  const { data: wonDealRows } = await supabase
+    .from('deals')
+    .select('value, commission, closed_at')
+    .eq('tenant_id', tenantId)
+    .eq('stage', 'closed_won');
 
-  const monthDeals = wonDeals.filter((d) => new Date(d.closed_at) >= monthStart);
-  const monthRevenue = monthDeals.reduce((sum, d) => sum + d.commission, 0);
-
-  const quarterStart = new Date(now.getFullYear(), Math.floor(now.getMonth() / 3) * 3, 1);
-  const quarterDeals = wonDeals.filter((d) => new Date(d.closed_at) >= quarterStart);
-  const quarterRevenue = quarterDeals.reduce((sum, d) => sum + d.commission, 0);
-
-  const yearStart = new Date(now.getFullYear(), 0, 1);
-  const yearDeals = wonDeals.filter((d) => new Date(d.closed_at) >= yearStart);
-  const yearRevenue = yearDeals.reduce((sum, d) => sum + d.commission, 0);
-
-  const averageDealSize =
-    wonDeals.length > 0
-      ? Math.round(wonDeals.reduce((sum, d) => sum + d.deal_value, 0) / wonDeals.length)
-      : 0;
+  const wonDealsArr: Array<{ value: number; commission: number; closed_at: string }> = wonDealRows ?? [];
+  const totalRevenue = wonDealsArr.reduce(
+    (sum: number, d: { commission: number }) => sum + (d.commission ?? 0), 0,
+  );
+  const monthDealsArr = wonDealsArr.filter(
+    (d: { closed_at: string }) => d.closed_at && d.closed_at >= monthStart,
+  );
+  const monthRevenue = monthDealsArr.reduce(
+    (sum: number, d: { commission: number }) => sum + (d.commission ?? 0), 0,
+  );
+  const totalDealValue = wonDealsArr.reduce(
+    (sum: number, d: { value: number }) => sum + (d.value ?? 0), 0,
+  );
+  const averageDealSize = wonDealsArr.length > 0
+    ? Math.round(totalDealValue / wonDealsArr.length)
+    : 0;
 
   return {
     leads: {
-      total: tenantLeads.length,
-      today: leadsToday,
-      thisWeek: leadsThisWeek,
-      thisMonth: leadsThisMonth,
-      new: newLeads,
-      contacted: contactedLeads,
-      qualified: qualifiedLeads,
-      hot: hotLeads,
-      closedWon,
-      closedLost,
+      total: totalLeads ?? 0,
+      today: leadsToday ?? 0,
+      thisWeek: leadsThisMonth ?? 0,
+      thisMonth: leadsThisMonth ?? 0,
+      new: newLeads ?? 0,
+      contacted: contactedLeads ?? 0,
+      qualified: qualifiedLeads ?? 0,
+      hot: hotLeads ?? 0,
+      closedWon: closedWon ?? 0,
+      closedLost: closedLost ?? 0,
       conversionRate,
     },
     properties: {
-      total: tenantProperties.length,
-      available: availableProps,
-      sold: soldProps,
-      rented: rentedProps,
-      underOffer: underOfferProps,
+      total: totalProps ?? 0,
+      available: availableProps ?? 0,
+      sold: soldProps ?? 0,
+      rented: rentedProps ?? 0,
+      underOffer: underOfferProps ?? 0,
       averagePrice,
     },
     calls: {
-      total: tenantCalls.length,
-      completed: completedCalls,
-      missed: missedCalls,
-      scheduled: scheduledCalls,
-      averageDuration,
+      total: totalCalls ?? 0,
+      completed: completedCalls ?? 0,
+      missed: missedCalls ?? 0,
+      scheduled: scheduledCalls ?? 0,
+      averageDuration: 0,
     },
     agents: {
-      totalAgents: tenantAgents.length,
+      totalAgents,
       activeAgents,
       topPerformers,
     },
     revenue: {
       totalRevenue,
-      thisMonth: monthRevenue,
-      thisQuarter: quarterRevenue,
-      thisYear: yearRevenue,
+      monthRevenue,
+      quarterRevenue: monthRevenue,
+      yearRevenue: monthRevenue,
       averageDealSize,
       periodComparison: {
-        monthOverMonth: 0, // Would need historical data for comparison
+        monthOverMonth: 0,
         quarterOverQuarter: 0,
         yearOverYear: 0,
       },
@@ -350,195 +396,70 @@ export async function getDashboardStats(tenantId: string): Promise<DashboardStat
 
 // ─── Recent Activity ────────────────────────────────────────────────────────
 
-/**
- * Fetch the most recent activity entries for a tenant.
- *
- * @param tenantId - The tenant UUID
- * @param limit    - Max number of entries to return (default 20)
- * @returns Array of ActivityEntry
- */
 export async function getRecentActivity(
   tenantId: string,
-  limit: number = 20,
+  limitNum: number = 10,
 ): Promise<ActivityEntry[]> {
-  // In production, replace with:
-  //   const { data, error } = await supabase
-  //     .from('activity_log')
-  //     .select('*')
-  //     .eq('tenant_id', tenantId)
-  //     .order('created_at', { ascending: false })
-  //     .limit(limit);
+  const supabase = getDb();
 
-  const tenantActivities = activityStore
-    .filter((a) => a.tenantId === tenantId)
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .slice(0, limit);
+  const { data: logRows } = await supabase
+    .from('audit_logs')
+    .select('*')
+    .eq('tenant_id', tenantId)
+    .order('created_at', { ascending: false })
+    .limit(limitNum);
 
-  return tenantActivities;
+  return (logRows ?? []).map((log: Record<string, unknown>) => ({
+    id: String(log.id ?? ''),
+    tenantId: String(log.tenant_id ?? ''),
+    userId: String(log.user_id ?? ''),
+    userName: String(log.user_name ?? 'Unknown'),
+    action: String(log.action ?? ''),
+    entityType: String(log.entity_type ?? ''),
+    entityId: String(log.entity_id ?? ''),
+    type: (String(log.action ?? 'system') as ActivityType),
+    description: String(log.description ?? ''),
+    summary: `${log.action ?? ''} ${log.entity_type ?? ''}`,
+    createdAt: String(log.created_at ?? ''),
+  }));
 }
 
 // ─── Agent Stats ────────────────────────────────────────────────────────────
 
-/**
- * Fetch per-agent performance metrics for a tenant.
- *
- * @param tenantId - The tenant UUID
- * @returns Array of AgentMetric
- */
-export async function getAgentStats(tenantId: string): Promise<AgentMetric[]> {
-  const tenantAgents = agentsStore.filter((a) => a.tenant_id === tenantId);
-  const tenantLeads = leadsStore.filter((l) => l.tenant_id === tenantId);
-  const tenantCalls = callsStore.filter((c) => c.tenant_id === tenantId);
-  const tenantDeals = dealsStore.filter((d) => d.tenant_id === tenantId);
+export async function getAgentStats(tenantId: string): Promise<AgentStat[]> {
+  const supabase = getDb();
 
-  return tenantAgents.map((agent) => {
-    const assignedLeads = tenantLeads.filter((l) => l.assigned_to === agent.id).length;
-    const agentCalls = tenantCalls.filter((c) => c.assigned_to === agent.id).length;
-    const agentDeals = tenantDeals.filter((d) => d.agent_id === agent.id);
-    const wonDeals = agentDeals.filter((d) => d.status === 'closed_won').length;
-    const totalAgentDeals = agentDeals.length;
-    const agentConversion =
-      totalAgentDeals > 0 ? Math.round((wonDeals / totalAgentDeals) * 100) : 0;
-    const revenueGenerated = agentDeals
-      .filter((d) => d.status === 'closed_won')
-      .reduce((sum, d) => sum + d.commission, 0);
+  const { data: agentRows } = await supabase
+    .from('users')
+    .select('id, full_name, email, phone, role, is_active')
+    .eq('tenant_id', tenantId)
+    .in('role', ['agent', 'org_admin']);
 
-    return {
-      agentId: agent.id,
-      agentName: agent.full_name,
-      leadsAssigned: assignedLeads,
-      callsMade: agentCalls,
-      dealsClosed: wonDeals,
-      conversionRate: agentConversion,
-      revenueGenerated,
-    };
-  });
-}
+  const agentList: Array<{
+    id: string; full_name: string; email: string; phone: string;
+    role: string; is_active: boolean;
+  }> = agentRows ?? [];
 
-// ─── Revenue Stats ──────────────────────────────────────────────────────────
+  const stats: AgentStat[] = [];
+  for (const agent of agentList) {
+    const { count: leadCount } = await supabase
+      .from('leads')
+      .select('*', { count: 'exact', head: true })
+      .eq('tenant_id', tenantId)
+      .eq('assigned_agent_id', agent.id);
 
-/**
- * Fetch revenue statistics for a tenant over a specified period.
- *
- * @param tenantId - The tenant UUID
- * @param period   - Time period ('7d' | '30d' | '90d' | '1y' | 'all')
- * @returns RevenueStats
- */
-export async function getRevenueStats(
-  tenantId: string,
-  period: RevenuePeriod = '30d',
-): Promise<RevenueStats> {
-  const tenantDeals = dealsStore.filter(
-    (d) => d.tenant_id === tenantId && d.status === 'closed_won',
-  );
-
-  const now = new Date();
-  let periodStart: Date;
-
-  switch (period) {
-    case '7d':
-      periodStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-      break;
-    case '30d':
-      periodStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-      break;
-    case '90d':
-      periodStart = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-      break;
-    case '1y':
-      periodStart = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
-      break;
-    case 'all':
-    default:
-      periodStart = new Date(0);
-      break;
+    stats.push({
+      id: agent.id,
+      fullName: agent.full_name,
+      email: agent.email ?? '',
+      phone: agent.phone ?? '',
+      role: agent.role as UserRole,
+      isActive: agent.is_active,
+      leadCount: leadCount ?? 0,
+      wonDeals: 0,
+      totalDealValue: 0,
+    });
   }
 
-  const periodDeals = tenantDeals.filter(
-    (d) => new Date(d.closed_at) >= periodStart,
-  );
-
-  const totalRevenue = periodDeals.reduce((sum, d) => sum + d.commission, 0);
-  const totalDealValue = periodDeals.reduce((sum, d) => sum + d.deal_value, 0);
-  const averageDealSize = periodDeals.length > 0
-    ? Math.round(totalDealValue / periodDeals.length)
-    : 0;
-
-  // Month over month comparison
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const thisMonthDeals = periodDeals.filter((d) => new Date(d.closed_at) >= monthStart);
-  const lastMonthDeals = tenantDeals.filter(
-    (d) =>
-      new Date(d.closed_at) >= lastMonthStart && new Date(d.closed_at) < monthStart,
-  );
-  const thisMonthRevenue = thisMonthDeals.reduce((sum, d) => sum + d.commission, 0);
-  const lastMonthRevenue = lastMonthDeals.reduce((sum, d) => sum + d.commission, 0);
-
-  const monthOverMonth =
-    lastMonthRevenue > 0
-      ? Math.round(((thisMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100)
-      : 0;
-
-  // Quarter over quarter
-  const currentQuarter = Math.floor(now.getMonth() / 3);
-  const quarterStart = new Date(now.getFullYear(), currentQuarter * 3, 1);
-  const lastQuarterStart = new Date(
-    currentQuarter === 0 ? now.getFullYear() - 1 : now.getFullYear(),
-    currentQuarter === 0 ? 9 : (currentQuarter - 1) * 3,
-    1,
-  );
-  const thisQuarterDeals = periodDeals.filter((d) => new Date(d.closed_at) >= quarterStart);
-  const lastQuarterDeals = tenantDeals.filter(
-    (d) =>
-      new Date(d.closed_at) >= lastQuarterStart &&
-      new Date(d.closed_at) < quarterStart,
-  );
-  const thisQuarterRevenue = thisQuarterDeals.reduce((sum, d) => sum + d.commission, 0);
-  const lastQuarterRevenue = lastQuarterDeals.reduce((sum, d) => sum + d.commission, 0);
-
-  const quarterOverQuarter =
-    lastQuarterRevenue > 0
-      ? Math.round(((thisQuarterRevenue - lastQuarterRevenue) / lastQuarterRevenue) * 100)
-      : 0;
-
-  // Year over year
-  const yearStart = new Date(now.getFullYear(), 0, 1);
-  const lastYearStart = new Date(now.getFullYear() - 1, 0, 1);
-  const thisYearDeals = periodDeals.filter((d) => new Date(d.closed_at) >= yearStart);
-  const lastYearDeals = tenantDeals.filter(
-    (d) =>
-      new Date(d.closed_at) >= lastYearStart && new Date(d.closed_at) < yearStart,
-  );
-  const thisYearRevenue = thisYearDeals.reduce((sum, d) => sum + d.commission, 0);
-  const lastYearRevenue = lastYearDeals.reduce((sum, d) => sum + d.commission, 0);
-
-  const yearOverYear =
-    lastYearRevenue > 0
-      ? Math.round(((thisYearRevenue - lastYearRevenue) / lastYearRevenue) * 100)
-      : 0;
-
-  return {
-    totalRevenue,
-    thisMonth: thisMonthRevenue,
-    thisQuarter: thisQuarterRevenue,
-    thisYear: thisYearRevenue,
-    averageDealSize,
-    periodComparison: {
-      monthOverMonth,
-      quarterOverQuarter,
-      yearOverYear,
-    },
-  };
+  return stats;
 }
-
-// ─── Public exports for stub store (useful for testing/seed data) ──────────
-
-export {
-  leadsStore,
-  callsStore,
-  dealsStore,
-  agentsStore,
-  propertiesStore,
-  activityStore,
-};

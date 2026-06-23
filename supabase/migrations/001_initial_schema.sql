@@ -8,8 +8,10 @@
 -- Enable required extensions
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-CREATE EXTENSION IF NOT EXISTS pg_partman;
-CREATE EXTENSION IF NOT EXISTS pg_cron;
+-- pg_cron is pre-installed on Supabase platform
+
+-- Create app schema for helper functions and security context
+CREATE SCHEMA IF NOT EXISTS app;
 
 -- ############################################################################
 -- 1. TENANTS

@@ -63,12 +63,14 @@ export async function logActivity(
     id: crypto.randomUUID(),
     tenantId,
     userId: userId ?? 'system',
-    userName: null, // Would be fetched from user table in production
+    userName: 'system',
     type,
+    action: type,
     entityType: entityType ?? type.split('_')[0] ?? 'unknown',
     entityId,
     description,
-    metadata: metadata ?? null,
+    summary: `${type} ${entityType ?? type.split('_')[0] ?? 'unknown'}`,
+    metadata: metadata ?? undefined,
     createdAt: new Date().toISOString(),
   };
 

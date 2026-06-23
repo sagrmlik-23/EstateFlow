@@ -17,19 +17,19 @@ SELECT
     t.id                                                                    AS tenant_id,
 
     -- Lead metrics
-    COALESCE(l.total_leads, 0)                                              AS total_leads,
-    COALESCE(l.new_leads_today, 0)                                          AS new_leads_today,
-    COALESCE(l.leads_by_status, '{}'::JSONB)                                AS leads_by_status,
+    COALESCE(l_total.total_leads, 0)                                        AS total_leads,
+    COALESCE(l_total.new_leads_today, 0)                                    AS new_leads_today,
+    COALESCE(l_status.leads_by_status, '{}'::JSONB)                         AS leads_by_status,
 
     -- Property metrics
     COALESCE(p.total_properties, 0)                                         AS total_properties,
     COALESCE(p.available_properties, 0)                                     AS available_properties,
 
     -- Deal metrics
-    COALESCE(d.total_deals, 0)                                              AS total_deals,
-    COALESCE(d.deals_by_stage, '{}'::JSONB)                                 AS deals_by_stage,
-    COALESCE(d.total_deal_value, 0)                                         AS total_deal_value,
-    COALESCE(d.won_deals_value, 0)                                          AS won_deals_value,
+    COALESCE(d_total.total_deals, 0)                                        AS total_deals,
+    COALESCE(d_stage.deals_by_stage, '{}'::JSONB)                           AS deals_by_stage,
+    COALESCE(d_total.total_deal_value, 0)                                   AS total_deal_value,
+    COALESCE(d_total.won_deals_value, 0)                                    AS won_deals_value,
 
     -- Call metrics
     COALESCE(c.total_calls_made, 0)                                         AS total_calls_made,
@@ -43,8 +43,8 @@ SELECT
 
     -- Conversion rate (won deals / total deals)
     CASE
-        WHEN COALESCE(d.total_deals, 0) > 0
-        THEN ROUND((COALESCE(d.won_deals_value, 0) / NULLIF(d.total_deal_value, 0)) * 100, 2)
+        WHEN COALESCE(d_total.total_deals, 0) > 0
+        THEN ROUND((COALESCE(d_total.won_deals_value, 0) / NULLIF(d_total.total_deal_value, 0)) * 100, 2)
         ELSE 0
     END                                                                     AS conversion_rate,
 
@@ -53,14 +53,20 @@ SELECT
 
 FROM
     tenants t
-    -- Lead subquery
+    -- Lead subquery (total + today's new leads — query leads directly)
     LEFT JOIN LATERAL (
         SELECT
             COUNT(*)                                                        AS total_leads,
-            COUNT(*) FILTER (WHERE created_at >= CURRENT_DATE)              AS new_leads_today,
+            COUNT(*) FILTER (WHERE created_at >= CURRENT_DATE)              AS new_leads_today
+        FROM leads
+        WHERE tenant_id = t.id
+    ) l_total ON TRUE
+    -- Lead subquery (by status breakdown — grouped)
+    LEFT JOIN LATERAL (
+        SELECT
             COALESCE(
-                jsonb_agg(jsonb_build_object('status', l2.status, 'count', l2.cnt))
-                FILTER (WHERE l2.status IS NOT NULL),
+                jsonb_agg(jsonb_build_object('status', status, 'count', cnt))
+                FILTER (WHERE status IS NOT NULL),
                 '[]'::JSONB
             )                                                               AS leads_by_status
         FROM (
@@ -69,7 +75,7 @@ FROM
             WHERE tenant_id = t.id
             GROUP BY status
         ) l2
-    ) l ON TRUE
+    ) l_status ON TRUE
     -- Property subquery
     LEFT JOIN LATERAL (
         SELECT
@@ -78,28 +84,30 @@ FROM
         FROM properties
         WHERE tenant_id = t.id
     ) p ON TRUE
-    -- Deal subquery
+    -- Deal subquery (total metrics — query deals directly)
     LEFT JOIN LATERAL (
         SELECT
             COUNT(*)                                                        AS total_deals,
+            COALESCE(SUM(value), 0)                                       AS total_deal_value,
+            COALESCE(SUM(value) FILTER (WHERE stage = 'closed_won'), 0)   AS won_deals_value
+        FROM deals
+        WHERE tenant_id = t.id
+    ) d_total ON TRUE
+    -- Deal subquery (by stage breakdown — grouped)
+    LEFT JOIN LATERAL (
+        SELECT
             COALESCE(
-                jsonb_agg(jsonb_build_object('stage', d2.stage, 'count', d2.cnt))
-                FILTER (WHERE d2.stage IS NOT NULL),
+                jsonb_agg(jsonb_build_object('stage', stage, 'count', cnt))
+                FILTER (WHERE stage IS NOT NULL),
                 '[]'::JSONB
-            )                                                               AS deals_by_stage,
-            COALESCE(SUM(d2.total_val), 0)                                  AS total_deal_value,
-            COALESCE(SUM(d2.won_val), 0)                                    AS won_deals_value
+            )                                                               AS deals_by_stage
         FROM (
-            SELECT
-                stage,
-                COUNT(*)                                                    AS cnt,
-                SUM(value)                                                  AS total_val,
-                SUM(value) FILTER (WHERE stage = 'closed_won')              AS won_val
+            SELECT stage, COUNT(*) AS cnt
             FROM deals
             WHERE tenant_id = t.id
             GROUP BY stage
         ) d2
-    ) d ON TRUE
+    ) d_stage ON TRUE
     -- Call subquery (manual calls)
     LEFT JOIN LATERAL (
         SELECT COUNT(*) AS total_calls_made
@@ -161,11 +169,19 @@ $$;
 -- Schedule auto-refresh via pg_cron (every 5 minutes)
 -- Note: pg_cron must be configured in postgresql.conf
 -- ============================================================================
-SELECT cron.schedule(
-    'refresh-tenant-dashboard',         -- job name
-    '*/5 * * * *',                      -- every 5 minutes
-    'SELECT app.refresh_tenant_dashboard_stats()'
-);
+-- Schedule auto-refresh via pg_cron (every 5 minutes)
+-- Note: pg_cron must be enabled in Supabase dashboard
+DO $$
+BEGIN
+    PERFORM cron.schedule(
+        'refresh-tenant-dashboard',
+        '*/5 * * * *',
+        'SELECT app.refresh_tenant_dashboard_stats()'
+    );
+EXCEPTION WHEN OTHERS THEN
+    RAISE NOTICE 'pg_cron not available. Materialized view refresh not scheduled.';
+END;
+$$;
 
 -- ============================================================================
 -- Migration complete
